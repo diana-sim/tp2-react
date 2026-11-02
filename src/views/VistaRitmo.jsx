@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { entregasCerradas, horasEstimadas, describirRitmo, MIN_CERRADAS } from '../lib/calculos.js';
 import { fmtHoras, fmtFecha } from '../lib/formato.js';
+import Mascota from '../components/Mascota.jsx';
 
 const OPCIONES_HORAS = [1, 2, 3, 4, 5, 6, 8];
 
@@ -39,6 +40,9 @@ export default function VistaRitmo({ tareas, ritmo, hpd, onAbrir, onCambiarHoras
       <div className="rejilla">
         {/* ---------- la frase principal ---------- */}
         <div className="card ritmo-hero">
+          {/* Posti a la izquierda mientras la app todavía está aprendiendo */}
+          {!ritmo.conocido && <Mascota pose="pensando" tamano={84} />}
+          <div className="ritmo-hero-txt">
           <p className={'ritmo-tit grande ritmo-' + desc.tipo}>{desc.titulo}</p>
           <p className="ritmo-txt">{desc.texto}</p>
           {ritmo.conocido && desc.tipo !== 'bien' && (
@@ -54,6 +58,7 @@ export default function VistaRitmo({ tareas, ritmo, hpd, onAbrir, onCambiarHoras
             Se calcula con todas tus entregas terminadas: horas reales ÷ horas que calculaste.
             {ritmo.cerradas > 0 && ` Basado en ${ritmo.cerradas} ${ritmo.cerradas === 1 ? 'entrega' : 'entregas'}.`}
           </p>
+          </div>
         </div>
 
         {/* ---------- disponibilidad ---------- */}

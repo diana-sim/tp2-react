@@ -8,6 +8,7 @@ import { fmtFecha, fmtHoras, textoDias } from '../lib/formato.js';
 import Anillo from './Anillo.jsx';
 import Subtareas from './Subtareas.jsx';
 import EtiquetaSituacion from './EtiquetaSituacion.jsx';
+import Mascota from './Mascota.jsx';
 
 const COLOR_ANILLO = { rojo: '#F2A8C4', ambar: '#F0B47E', oliva: '#A8C86E', gris: '#A8C86E', celeste: '#86C3D8' };
 
@@ -47,6 +48,13 @@ export default function PanelDetalle({ tarea, ritmo, hpd, materias, onActualizar
             </select>
           </div>
 
+          {sit.clave === 'vencida' && (
+            <div className="con-mascota aviso-vencida">
+              <Mascota pose="preocupada" tamano={56} />
+              <p className="alerta">La fecha ya pasó. Si todavía la tenés que entregar, cambiá la fecha con <b>Editar</b> o hablalo con el profe. Si ya la entregaste, marcala como terminada.</p>
+            </div>
+          )}
+
           {/* ---------- avance ---------- */}
           <div className="bloque">
             <h3>Avance</h3>
@@ -80,11 +88,11 @@ export default function PanelDetalle({ tarea, ritmo, hpd, materias, onActualizar
             </div>
             {!terminada && <Estimacion tarea={tarea} ritmo={ritmo} onActualizar={onActualizar} />}
             {!terminada && sit.clave === 'riesgo' && (
-              <p className="alerta">
+              <div className="con-mascota"><Mascota pose="preocupada" tamano={56} /><p className="alerta">
                 Te {dias > 1 ? `quedan ${dias} días` : dias === 1 ? 'queda 1 día' : 'queda hoy'} ({fmtHoras(Math.max(dias, 0) * hpd)} de estudio)
                 y, a tu ritmo, necesitás {fmtHoras(horasFaltan(tarea) * ritmo.factor)}. Podés achicar el alcance,
                 pedir más tiempo o sumar horas estos días.
-              </p>
+              </p></div>
             )}
             <Cierre tarea={tarea} ritmo={ritmo} onActualizar={onActualizar} />
           </div>
@@ -202,9 +210,12 @@ function Cierre({ tarea, ritmo, onActualizar }) {
         ? `Calculaste ${fmtHoras(estimado)} y te llevó ${fmtHoras(tarea.horasReales)}. ¡Muy buena estimación!`
         : `Calculaste ${fmtHoras(estimado)} y te llevó ${fmtHoras(tarea.horasReales)} (un ${pct}% ${dif > 0 ? 'más' : 'menos'}).`;
     return (
-      <div className="cierre-ok">
-        <p className="dato">{comparacion}</p>
-        {estimado > 0 && <p className="aviso">Ya lo sumé a tu ritmo: {describirRitmo(ritmo).titulo.toLowerCase()}.</p>}
+      <div className="cierre-ok con-mascota">
+        <Mascota pose="festejando" tamano={52} />
+        <div>
+          <p className="dato">{comparacion}</p>
+          {estimado > 0 && <p className="aviso">Ya lo sumé a tu ritmo: {describirRitmo(ritmo).titulo.toLowerCase()}.</p>}
+        </div>
       </div>
     );
   }

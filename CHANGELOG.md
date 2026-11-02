@@ -2,6 +2,19 @@
 
 Registro de los cambios de cada versión publicada de **Al día**.
 
+## v1.1 — Posti y modo de prueba
+
+- **Mascota:** Posti, un post-it que acompaña con 4 poses:
+  saluda en la bienvenida, piensa en las pantallas vacías y en *Mi ritmo* mientras aprende,
+  festeja cuando estás al día o terminás una entrega, y se preocupa (con calma) cuando algo
+  está en riesgo o vencido.
+- **Hoy:** banner con Posti que resume cómo venís ("¡Estás al día!" o "Una entrega necesita atención").
+- **Entregas vencidas:** aviso nuevo en el detalle con qué hacer (cambiar la fecha, hablar con el profe o marcarla como terminada).
+- **Mi ritmo:** Posti a la izquierda de la tarjeta principal, centrado y con más aire.
+- **Modo de prueba (solo desarrollo):** selector *Dev · datos* para ver la app con tus datos,
+  vacía o con 12 entregas de ejemplo con distintos niveles de urgencia. Los datos de prueba
+  viven en memoria y no se guardan en Firestore. No aparece en la versión publicada.
+
 ## v1 — Primera versión funcional
 
 App en React + Vite conectada a Firebase y publicada en Vercel.

@@ -451,3 +451,33 @@ textarea.campo { resize: vertical; line-height: 1.5; }
 .estado-f { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 0; }
 .estado-n { margin-left: auto; font-weight: 600; }
 @media (max-width: 620px) { .vistas-op { grid-template-columns: 1fr; } }
+
+/* ============================================================
+   Mascota (Posti)
+   ============================================================ */
+.mascota { display: block; flex: none; height: auto; user-select: none; }
+.con-mascota { display: flex; gap: 14px; align-items: center; }
+.con-mascota .alerta { margin-top: 0; flex: 1; }
+.aviso-vencida { margin-bottom: 14px; }
+.vacio .mascota { margin: 0 auto 10px; }
+.banner { display: flex; align-items: center; gap: 16px; padding: 10px 19px; }
+.banner p { font-size: 13.5px; line-height: 1.45; }
+.banner-ok { background: var(--verde-bg); border-color: #E2EDCE; }
+.banner-atencion { background: var(--durazno-bg); border-color: #F5DEC6; }
+.ritmo-hero { display: flex; align-items: center; gap: 28px; }
+.ritmo-hero-txt { flex: 1; min-width: 0; }
+@media (max-width: 620px) {
+  .bienv.con-mascota { flex-direction: column; align-items: flex-start; }
+  .ritmo-hero { gap: 16px; }
+}
+
+/* ============================================================
+   Modo dev (selector de datos de prueba)
+   ============================================================ */
+.dev { border: 1px dashed var(--linea-2); border-radius: 10px; padding: 8px; margin-bottom: 10px; }
+.dev-l { display: block; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-3); margin: 0 0 6px 2px; }
+.dev-ops { display: flex; gap: 3px; }
+.dev-op { flex: 1; text-align: center; font-size: 11.5px; font-weight: 500; color: var(--tinta-2); border-radius: 7px; padding: 5px 2px; }
+.dev-op:hover { background: var(--fondo); }
+.dev-op.on { background: var(--tinta); color: #fff; }
+.aviso-dev { background: #FFF8DB; border: 1px dashed #E8D58A; color: #7A6418; border-radius: 9px; padding: 8px 12px; font-size: 12.5px; margin-bottom: 14px; }

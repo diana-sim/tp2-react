@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Modal from './Modal.jsx';
 import Icono from './Icono.jsx';
+import Mascota from './Mascota.jsx';
 
 const VISTAS = [
   { clave: 'lista',      titulo: 'Lista',      texto: 'Todo junto, ordenado por urgencia' },
@@ -21,7 +22,10 @@ export default function Bienvenida({ onElegir }) {
 
   return (
     <Modal titulo="¿Estás al día?">
-      <p className="bienv-lead"><b>Al día</b> es una forma nueva de organizar la facu: tus entregas, sus partes y sus fechas, vistas como a vos te sirva.</p>
+      <div className="con-mascota">
+        <Mascota pose="saludando" tamano={84} />
+        <p className="bienv-lead">¡Hola! Soy Posti. <b>Al día</b> es una forma nueva de organizar la facu: tus entregas, sus partes y sus fechas, vistas como a vos te sirva.</p>
+      </div>
 
       <label className="lbl-c">¿Cómo te gusta ver tus cosas?</label>
       <div className="vistas-op">

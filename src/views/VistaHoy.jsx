@@ -2,6 +2,7 @@ import { ESTADOS } from '../data/estados.js';
 import { ordenarPorUrgencia, situacion, describirRitmo, proximosDias, horasEstimadas } from '../lib/calculos.js';
 import { saludo, fechaDeHoy, claveFecha } from '../lib/formato.js';
 import FilaTarea from '../components/FilaTarea.jsx';
+import Mascota from '../components/Mascota.jsx';
 
 // Sección "Hoy": un resumen para arrancar el día sin tener que mirar todo.
 export default function VistaHoy({ tareas, ritmo, hpd, onAbrir, onNueva, onVerEntregas, onVerRitmo }) {
@@ -10,7 +11,9 @@ export default function VistaHoy({ tareas, ritmo, hpd, onAbrir, onNueva, onVerEn
     return (
       <>
         <div className="head"><div><h1>{saludo()}</h1><p className="sub cap">{fechaDeHoy()}</p></div></div>
-        <div className="card bienv">
+        <div className="card bienv con-mascota">
+          <Mascota pose="saludando" tamano={110} />
+          <div>
           <h2>Organizá la facu a tu manera</h2>
           <ol className="pasos-bienv">
             <li><b>Cargá tus entregas</b> con su materia y su fecha.</li>
@@ -19,6 +22,7 @@ export default function VistaHoy({ tareas, ritmo, hpd, onAbrir, onNueva, onVerEn
           </ol>
           <p className="aviso aviso-arriba">Extra: si me contás cuánto tiempo te lleva cada cosa, aprendo tu ritmo y te aviso si no llegás.</p>
           <button className="btn btn-pri" onClick={onNueva}>+ Nueva entrega</button>
+          </div>
         </div>
       </>
     );
@@ -50,6 +54,18 @@ export default function VistaHoy({ tareas, ritmo, hpd, onAbrir, onNueva, onVerEn
           <p className="sub"><span className="cap">{fechaDeHoy()}</span> · {resumen}</p>
         </div>
         <button className="btn btn-pri" onClick={onNueva}>+ Nueva entrega</button>
+      </div>
+
+      {/* Posti comenta cómo venís */}
+      <div className={'card banner ' + (vencenPronto.length ? 'banner-atencion' : 'banner-ok')}>
+        <Mascota pose={vencenPronto.length ? 'preocupada' : 'festejando'} tamano={64} />
+        <p>
+          {activas.length === 0
+            ? <><b>No tenés nada pendiente.</b> ¡A descansar!</>
+            : vencenPronto.length
+              ? <><b>{vencenPronto.length === 1 ? 'Una entrega necesita' : `${vencenPronto.length} entregas necesitan`} atención.</b> Empezá por la primera de abajo: de a una se puede.</>
+              : <><b>¡Estás al día!</b> No hay nada vencido ni en riesgo. Seguí así.</>}
+        </p>
       </div>
 
       <div className="card">

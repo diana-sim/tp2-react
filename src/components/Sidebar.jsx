@@ -7,7 +7,14 @@ const SECCIONES = [
   { clave: 'ritmo',    texto: 'Mi ritmo' },
 ];
 
-export default function Sidebar({ seccion, activas, onIrA, onNueva }) {
+// Opciones del selector de datos (solo para desarrollo).
+const MODOS = [
+  { clave: 'real', texto: 'Reales' },
+  { clave: 'vacio', texto: 'Vacía' },
+  { clave: 'demo', texto: 'Ejemplos' },
+];
+
+export default function Sidebar({ seccion, activas, onIrA, onNueva, modo, onCambiarModo }) {
   return (
     <aside className="side">
       <div className="logo">
@@ -27,6 +34,19 @@ export default function Sidebar({ seccion, activas, onIrA, onNueva }) {
       ))}
 
       <div className="side-pie">
+        {/* modo === null en producción: el selector no se muestra */}
+        {modo && (
+          <div className="dev">
+            <span className="dev-l">Dev · datos</span>
+            <div className="dev-ops">
+              {MODOS.map(m => (
+                <button key={m.clave} className={'dev-op' + (modo === m.clave ? ' on' : '')} onClick={() => onCambiarModo(m.clave)}>
+                  {m.texto}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <button className="btn btn-pri btn-ancho" onClick={onNueva}>+ Nueva entrega</button>
       </div>
     </aside>

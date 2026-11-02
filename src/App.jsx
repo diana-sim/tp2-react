@@ -10,6 +10,11 @@ import PanelDetalle from './components/PanelDetalle.jsx';
 import VistaHoy from './views/VistaHoy.jsx';
 import VistaEntregas from './views/VistaEntregas.jsx';
 import VistaRitmo from './views/VistaRitmo.jsx';
+import { crearDemo, entregaDePrueba } from './data/demo.js';
+
+// Selector de datos de prueba: solo aparece con `npm run dev` (no en Vercel),
+// salvo que se active la variable VITE_MODO_DEV=true.
+const MOSTRAR_DEV = import.meta.env.DEV || import.meta.env.VITE_MODO_DEV === 'true';
 
 // App es el dueño de los datos y decide qué sección se muestra.
 export default function App() {
@@ -27,6 +32,13 @@ export default function App() {
   const [abierta, setAbierta] = useState(null);           // id de la entrega abierta en el panel
   const [creando, setCreando] = useState(false);
   const [bienvenida, setBienvenida] = useState(false);    // primera vez: presentar la app
+
+  // ---------- modo dev: datos de prueba en memoria (NO se guardan en Firestore) ----------
+  const [modo, setModo] = useState('real');               // 'real' | 'vacio' | 'demo'
+  const [tareasDemo, setTareasDemo] = useState([]);
+  const enPrueba = modo !== 'real';
+  const lista = enPrueba ? tareasDemo : tareas;            // las entregas que se muestran
+  const setLista = enPrueba ? setTareasDemo : setTareas;   // y cómo se modifican
 
   // ---------- al abrir: sesión anónima + lectura ----------
   useEffect(() => {
@@ -62,17 +74,17 @@ export default function App() {
 
   // ---------- valores derivados ----------
   const hpd = prefs?.horasPorDia || HORAS_POR_DIA_DEFECTO;   // horas de estudio por día
-  const ritmo = useMemo(() => calcularRitmo(tareas), [tareas]);
-  const tareaAbierta = tareas.find(t => t.id === abierta);
-  const activas = tareas.filter(t => t.estado !== 'terminada').length;
-  const materias = [...new Set(tareas.map(t => t.materia))]; // para sugerir al escribir
+  const ritmo = useMemo(() => calcularRitmo(lista), [lista]);
+  const tareaAbierta = lista.find(t => t.id === abierta);
+  const activas = lista.filter(t => t.estado !== 'terminada').length;
+  const materias = [...new Set(lista.map(t => t.materia))]; // para sugerir al escribir
 
   // ---------- operaciones (siempre: primero Firestore, después la pantalla) ----------
   const crear = async datos => {
     setError('');
     try {
-      const nueva = await crearTarea(uid, datos);
-      setTareas(prev => [...prev, nueva]);
+      const nueva = enPrueba ? entregaDePrueba(datos) : await crearTarea(uid, datos);
+      setLista(prev => [...prev, nueva]);
       setCreando(false);
       setAbierta(nueva.id);
       setAviso('Entrega creada');
@@ -85,8 +97,8 @@ export default function App() {
   const actualizar = async (id, cambios, mensaje) => {
     setError('');
     try {
-      await actualizarTarea(uid, id, cambios);
-      setTareas(prev => prev.map(t => (t.id === id ? { ...t, ...cambios } : t)));
+      if (!enPrueba) await actualizarTarea(uid, id, cambios);
+      setLista(prev => prev.map(t => (t.id === id ? { ...t, ...cambios } : t)));
       if (mensaje) setAviso(mensaje);
       return true;
     } catch {
@@ -98,8 +110,8 @@ export default function App() {
   const eliminar = async id => {
     setError('');
     try {
-      await borrarTarea(uid, id);
-      setTareas(prev => prev.filter(t => t.id !== id));
+      if (!enPrueba) await borrarTarea(uid, id);
+      setLista(prev => prev.filter(t => t.id !== id));
       setAbierta(null);
       setAviso('Entrega eliminada');
     } catch {
@@ -108,7 +120,7 @@ export default function App() {
   };
 
   const mover = (id, estado) => {
-    const t = tareas.find(x => x.id === id);
+    const t = lista.find(x => x.id === id);
     if (!t || t.estado === estado) return;
     const recordatorio = estado === 'terminada' && !t.horasReales ? 'Abrila y contame cuánto te llevó' : null;
     actualizar(id, { estado }, recordatorio);
@@ -140,18 +152,31 @@ export default function App() {
   };
 
   const irA = s => { setAbierta(null); setSeccion(s); };
+
+  const cambiarModo = m => {
+    setModo(m);
+    setAbierta(null);
+    setTareasDemo(m === 'demo' ? crearDemo() : []);
+  };
   const verEntregas = v => { if (v) cambiarVista(v); irA('entregas'); };
 
   if (cargando) return <p className="cargando">Cargando tus entregas…</p>;
 
   // Lo que comparten las tres secciones
-  const comunes = { tareas, ritmo, hpd, onAbrir: setAbierta, onNueva: () => setCreando(true) };
+  const comunes = { tareas: lista, ritmo, hpd, onAbrir: setAbierta, onNueva: () => setCreando(true) };
 
   return (
     <div className="app">
-      <Sidebar seccion={seccion} activas={activas} onIrA={irA} onNueva={() => setCreando(true)} />
+      <Sidebar seccion={seccion} activas={activas} onIrA={irA} onNueva={() => setCreando(true)}
+               modo={MOSTRAR_DEV ? modo : null} onCambiarModo={cambiarModo} />
 
       <main className="main">
+        {enPrueba && (
+          <p className="aviso-dev">
+            Modo prueba: {modo === 'demo' ? 'entregas ficticias' : 'sin entregas'}. Los cambios no se guardan.
+            <button className="link-btn" onClick={() => cambiarModo('real')}>Volver a mis datos</button>
+          </p>
+        )}
         {error && <p className="error error-pag">{error}</p>}
 
         {seccion === 'hoy' && <VistaHoy {...comunes} onVerEntregas={verEntregas} onVerRitmo={() => irA('ritmo')} />}

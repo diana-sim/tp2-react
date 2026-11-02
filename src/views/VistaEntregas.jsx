@@ -4,6 +4,7 @@ import FilaTarea from '../components/FilaTarea.jsx';
 import Tablero from '../components/Tablero.jsx';
 import Calendario from '../components/Calendario.jsx';
 import Icono from '../components/Icono.jsx';
+import Mascota from '../components/Mascota.jsx';
 
 // Las tres formas de mirar LAS MISMAS entregas.
 const VISTAS = [
@@ -79,6 +80,7 @@ export default function VistaEntregas({ tareas, ritmo, hpd, vista, onCambiarVist
       {tareas.length === 0 ? (
         <div className="card">
           <div className="vacio">
+            <Mascota pose="pensando" tamano={96} />
             <h3>Todavía no cargaste entregas</h3>
             <p>Empezá por la que más te preocupa: con una sola ya te puedo ayudar.</p>
             <button className="btn btn-pri" onClick={onNueva}>+ Nueva entrega</button>
@@ -87,7 +89,7 @@ export default function VistaEntregas({ tareas, ritmo, hpd, vista, onCambiarVist
       ) : vista === 'lista' ? (
         <div className="card">
           {visibles.length === 0
-            ? <div className="vacio"><h3>Nada por acá</h3><p>Probá con otro filtro o búsqueda.</p></div>
+            ? <div className="vacio"><Mascota pose="pensando" tamano={80} /><h3>Nada por acá</h3><p>Probá con otro filtro o búsqueda.</p></div>
             : <div className="filas">{ordenarPorUrgencia(visibles, ritmo.factor, hpd).map(t => <FilaTarea key={t.id} tarea={t} {...comunes} />)}</div>}
         </div>
       ) : vista === 'tablero' ? (
