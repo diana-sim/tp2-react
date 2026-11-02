@@ -1,131 +1,181 @@
-import { useEffect, useState } from 'react';
-import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from 'firebase/firestore';
-import { auth, db } from './firebase.js';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  escucharSesion, leerTareas, crearTarea, actualizarTarea, borrarTarea, leerPreferencias, guardarPreferencias,
+} from './services/tareas.js';
+import { calcularRitmo, HORAS_POR_DIA_DEFECTO } from './lib/calculos.js';
+import Sidebar from './components/Sidebar.jsx';
 import FormNueva from './components/FormNueva.jsx';
-import Tablero from './components/Tablero.jsx';
+import Bienvenida from './components/Bienvenida.jsx';
+import PanelDetalle from './components/PanelDetalle.jsx';
+import VistaHoy from './views/VistaHoy.jsx';
+import VistaEntregas from './views/VistaEntregas.jsx';
+import VistaRitmo from './views/VistaRitmo.jsx';
 
-// App sigue siendo el "dueño" de las tareas. Lo nuevo es que ahora,
-// antes de cambiar el estado, le pedimos a Firestore que guarde el cambio.
-// Si Firestore falla, NO tocamos la pantalla y mostramos un error.
+// App es el dueño de los datos y decide qué sección se muestra.
 export default function App() {
-  const [tareas, setTareas] = useState([]);       // arranca vacío: los datos vienen de Firestore
-  const [uid, setUid] = useState(null);           // id del usuario anónimo
-  const [cargando, setCargando] = useState(true); // true mientras traemos los datos
-  const [error, setError] = useState('');         // mensaje de error ('' = no hay)
-  const [aviso, setAviso] = useState('');         // mensaje de éxito que aparece abajo
+  // ---------- datos ----------
+  const [tareas, setTareas] = useState([]);
+  const [prefs, setPrefs] = useState(null); // { vistaPreferida, horasPorDia }
+  const [uid, setUid] = useState(null);
 
-  // ---------- 1. AL ABRIR LA APP: iniciar sesión y LEER ----------
-  // useEffect ejecuta código DESPUÉS de dibujar. Con [] al final,
-  // se ejecuta una sola vez, cuando la app aparece en pantalla.
+  // ---------- interfaz ----------
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState('');
+  const [aviso, setAviso] = useState('');
+  const [seccion, setSeccion] = useState('hoy');          // 'hoy' | 'entregas' | 'ritmo'
+  const [vista, setVista] = useState('lista');            // 'lista' | 'tablero' | 'calendario'
+  const [abierta, setAbierta] = useState(null);           // id de la entrega abierta en el panel
+  const [creando, setCreando] = useState(false);
+  const [bienvenida, setBienvenida] = useState(false);    // primera vez: presentar la app
+
+  // ---------- al abrir: sesión anónima + lectura ----------
   useEffect(() => {
-    // onAuthStateChanged "escucha" la sesión: se ejecuta al abrir la app
-    // y cada vez que alguien inicia o cierra sesión.
-    const dejarDeEscuchar = onAuthStateChanged(auth, async usuario => {
-      if (!usuario) {
-        // No hay sesión: pedimos una anónima. Cuando se concrete,
-        // esta misma función se vuelve a ejecutar, ya con un usuario.
-        signInAnonymously(auth).catch(() => {
-          setError('No se pudo iniciar sesión. Revisá tu conexión y recargá.');
+    const dejarDeEscuchar = escucharSesion(
+      async id => {
+        setUid(id);
+        try {
+          // Promise.all: pide las dos cosas a la vez y espera a que lleguen ambas.
+          const [lista, preferencias] = await Promise.all([leerTareas(id), leerPreferencias(id)]);
+          setTareas(lista);
+          setPrefs(preferencias);
+          if (preferencias?.vistaPreferida) setVista(preferencias.vistaPreferida);
+          else setBienvenida(true); // nunca eligió vista: es la primera vez
+        } catch {
+          setError('No se pudieron cargar tus entregas. Revisá tu conexión y recargá.');
+        } finally {
           setCargando(false);
-        });
-        return;
+        }
+      },
+      () => {
+        setError('No se pudo iniciar sesión. Revisá tu conexión y recargá.');
+        setCargando(false);
       }
-
-      setUid(usuario.uid);
-      try {
-        // LEER: traemos todos los documentos de usuarios/{uid}/tareas,
-        // ordenados por fecha de creación.
-        const consulta = query(collection(db, 'usuarios', usuario.uid, 'tareas'), orderBy('creada'));
-        const resultado = await getDocs(consulta);
-        // Cada documento trae su id por un lado y sus datos por otro: los juntamos.
-        setTareas(resultado.docs.map(d => ({ id: d.id, ...d.data() })));
-      } catch {
-        setError('No se pudieron cargar tus entregas.');
-      } finally {
-        setCargando(false); // pase lo que pase, dejamos de mostrar "cargando"
-      }
-    });
-
-    // Al salir, dejamos de escuchar la sesión (limpieza del efecto).
+    );
     return dejarDeEscuchar;
   }, []);
 
-  // El aviso de éxito se borra solo a los 2 segundos.
   useEffect(() => {
     if (!aviso) return;
-    const temporizador = setTimeout(() => setAviso(''), 2000);
+    const temporizador = setTimeout(() => setAviso(''), 2600);
     return () => clearTimeout(temporizador);
   }, [aviso]);
 
-  // Atajo: la referencia a la colección de este usuario.
-  const coleccion = () => collection(db, 'usuarios', uid, 'tareas');
+  // ---------- valores derivados ----------
+  const hpd = prefs?.horasPorDia || HORAS_POR_DIA_DEFECTO;   // horas de estudio por día
+  const ritmo = useMemo(() => calcularRitmo(tareas), [tareas]);
+  const tareaAbierta = tareas.find(t => t.id === abierta);
+  const activas = tareas.filter(t => t.estado !== 'terminada').length;
+  const materias = [...new Set(tareas.map(t => t.materia))]; // para sugerir al escribir
 
-  // ---------- 2. AGREGAR ----------
-  // "async" + "await": esperamos a que Firestore responda antes de seguir.
-  const agregar = async (titulo, materia) => {
+  // ---------- operaciones (siempre: primero Firestore, después la pantalla) ----------
+  const crear = async datos => {
     setError('');
     try {
-      const nueva = { titulo, materia, estado: 'pendiente', creada: Date.now() };
-      const ref = await addDoc(coleccion(), nueva); // Firestore genera el id
-      // Recién ahora, con el guardado confirmado, actualizamos la pantalla.
-      // "prev => ..." usa la versión más reciente del estado (importante después de un await).
-      setTareas(prev => [...prev, { id: ref.id, ...nueva }]);
-      setAviso('Entrega guardada');
-      return true; // le avisamos a FormNueva que salió bien
+      const nueva = await crearTarea(uid, datos);
+      setTareas(prev => [...prev, nueva]);
+      setCreando(false);
+      setAbierta(nueva.id);
+      setAviso('Entrega creada');
+      return true;
     } catch {
-      setError('No se pudo guardar la entrega. Probá de nuevo.');
+      return false; // el formulario muestra el error
+    }
+  };
+
+  const actualizar = async (id, cambios, mensaje) => {
+    setError('');
+    try {
+      await actualizarTarea(uid, id, cambios);
+      setTareas(prev => prev.map(t => (t.id === id ? { ...t, ...cambios } : t)));
+      if (mensaje) setAviso(mensaje);
+      return true;
+    } catch {
+      setError('No se pudo guardar el cambio. Probá de nuevo.');
       return false;
     }
   };
 
-  // ---------- 3. MODIFICAR (mover de columna) ----------
-  const mover = async (id, estado) => {
-    setError('');
-    try {
-      // doc(...) apunta a UN documento puntual; updateDoc cambia solo el campo "estado".
-      await updateDoc(doc(db, 'usuarios', uid, 'tareas', id), { estado });
-      setTareas(prev => prev.map(t => (t.id === id ? { ...t, estado } : t)));
-    } catch {
-      setError('No se pudo mover la entrega.');
-    }
-  };
-
-  // ---------- 4. ELIMINAR ----------
   const eliminar = async id => {
     setError('');
     try {
-      await deleteDoc(doc(db, 'usuarios', uid, 'tareas', id));
+      await borrarTarea(uid, id);
       setTareas(prev => prev.filter(t => t.id !== id));
+      setAbierta(null);
       setAviso('Entrega eliminada');
     } catch {
       setError('No se pudo eliminar la entrega.');
     }
   };
 
-  // ---------- LO QUE SE DIBUJA ----------
+  const mover = (id, estado) => {
+    const t = tareas.find(x => x.id === id);
+    if (!t || t.estado === estado) return;
+    const recordatorio = estado === 'terminada' && !t.horasReales ? 'Abrila y contame cuánto te llevó' : null;
+    actualizar(id, { estado }, recordatorio);
+  };
+
+  // Guarda una preferencia (vista favorita, horas por día) en Firestore.
+  const guardarPreferencia = async cambios => {
+    try {
+      await guardarPreferencias(uid, cambios);
+      setPrefs(prev => ({ ...prev, ...cambios }));
+      return true;
+    } catch {
+      setError('No se pudo guardar tu preferencia. Probá de nuevo.');
+      return false;
+    }
+  };
+
+  // La vista cambia al instante; en segundo plano se recuerda como favorita.
+  const cambiarVista = v => {
+    setVista(v);
+    guardarPreferencia({ vistaPreferida: v });
+  };
+
+  // Primera vez: eligió su vista favorita en la bienvenida.
+  const empezar = async v => {
+    const salioBien = await guardarPreferencia({ vistaPreferida: v });
+    if (salioBien) { setVista(v); setBienvenida(false); setSeccion('entregas'); }
+    return salioBien;
+  };
+
+  const irA = s => { setAbierta(null); setSeccion(s); };
+  const verEntregas = v => { if (v) cambiarVista(v); irA('entregas'); };
+
+  if (cargando) return <p className="cargando">Cargando tus entregas…</p>;
+
+  // Lo que comparten las tres secciones
+  const comunes = { tareas, ritmo, hpd, onAbrir: setAbierta, onNueva: () => setCreando(true) };
+
   return (
-    <main className="app">
-      <header className="head">
-        <div>
-          <h1>Tablero</h1>
-          <p className="sub">Arrastrá una entrega a otra columna para cambiarle el estado.</p>
-        </div>
-      </header>
+    <div className="app">
+      <Sidebar seccion={seccion} activas={activas} onIrA={irA} onNueva={() => setCreando(true)} />
 
-      {error && <p className="error error-pag">{error}</p>}
+      <main className="main">
+        {error && <p className="error error-pag">{error}</p>}
 
-      {/* Mientras carga mostramos un mensaje; cuando termina, el tablero. */}
-      {cargando ? (
-        <p className="cargando">Cargando tus entregas…</p>
-      ) : (
-        <>
-          <FormNueva onAgregar={agregar} />
-          <Tablero tareas={tareas} onMover={mover} onEliminar={eliminar} />
-        </>
+        {seccion === 'hoy' && <VistaHoy {...comunes} onVerEntregas={verEntregas} onVerRitmo={() => irA('ritmo')} />}
+        {seccion === 'entregas' && <VistaEntregas {...comunes} vista={vista} onCambiarVista={cambiarVista} onMover={mover} />}
+        {seccion === 'ritmo' && <VistaRitmo {...comunes} onCambiarHoras={h => guardarPreferencia({ horasPorDia: h })} />}
+      </main>
+
+      {/* El detalle se abre como panel lateral ENCIMA de la sección, sin perderla de vista */}
+      {tareaAbierta && (
+        <PanelDetalle
+          key={tareaAbierta.id}
+          tarea={tareaAbierta}
+          ritmo={ritmo}
+          hpd={hpd}
+          materias={materias}
+          onActualizar={(cambios, mensaje) => actualizar(tareaAbierta.id, cambios, mensaje)}
+          onEliminar={() => eliminar(tareaAbierta.id)}
+          onCerrar={() => setAbierta(null)}
+        />
       )}
 
+      {creando && <FormNueva materias={materias} ritmo={ritmo} onCrear={crear} onCerrar={() => setCreando(false)} />}
+      {bienvenida && <Bienvenida onElegir={empezar} />}
       {aviso && <div className="toast">{aviso}</div>}
-    </main>
+    </div>
   );
 }

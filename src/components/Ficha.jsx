@@ -1,11 +1,22 @@
 import { ESTADOS } from '../data/estados.js';
+import { situacion, progreso } from '../lib/calculos.js';
+import { fmtFecha } from '../lib/formato.js';
+import BarraProgreso from './BarraProgreso.jsx';
+import EtiquetaSituacion from './EtiquetaSituacion.jsx';
 
-// Una tarjeta del tablero. No tiene estado propio: todo lo recibe por props.
-export default function Ficha({ tarea, fantasma, onArrastrar, onMover, onEliminar }) {
-  // Posición de la columna actual, para saber si se puede ir a la izquierda o derecha.
+// Una tarjeta del tablero. Tocarla abre el detalle; arrastrarla o usar las flechas la cambia de columna.
+export default function Ficha({ tarea, ritmo, hpd, fantasma, onArrastrar, onMover, onAbrir }) {
   const i = ESTADOS.findIndex(e => e.clave === tarea.estado);
   const anterior = ESTADOS[i - 1];
   const siguiente = ESTADOS[i + 1];
+  const sit = situacion(tarea, ritmo.factor, hpd);
+
+  // Las flechas están DENTRO de la ficha, que también es clickeable.
+  // stopPropagation evita que el clic en la flecha abra además el detalle.
+  const moverA = (e, destino) => {
+    e.stopPropagation();
+    onMover(tarea.id, destino.clave);
+  };
 
   return (
     <article
@@ -13,22 +24,26 @@ export default function Ficha({ tarea, fantasma, onArrastrar, onMover, onElimina
       draggable
       onDragStart={() => onArrastrar(tarea.id)}
       onDragEnd={() => onArrastrar(null)}
+      onClick={() => onAbrir(tarea.id)}
     >
       <div className="ficha-top">
         <span className="tag">{tarea.materia}</span>
-        <button className="x" onClick={() => onEliminar(tarea.id)} aria-label="Eliminar entrega">×</button>
+        <span className="ficha-fecha">{fmtFecha(tarea.fechaEntrega)}</span>
       </div>
 
       <div className="ficha-t">{tarea.titulo}</div>
+      <BarraProgreso tarea={tarea} color={tarea.estado === 'terminada' ? 'gris' : sit.color} />
 
-      {/* En el celular no se puede arrastrar: estos botones hacen lo mismo. */}
       <div className="ficha-p">
-        <button className="flecha" disabled={!anterior}
-                onClick={() => onMover(tarea.id, anterior.clave)}
-                aria-label="Mover a la columna anterior">←</button>
-        <button className="flecha" disabled={!siguiente}
-                onClick={() => onMover(tarea.id, siguiente.clave)}
-                aria-label="Mover a la columna siguiente">→</button>
+        <EtiquetaSituacion sit={sit} />
+        <span className="ficha-pct">{progreso(tarea)}%</span>
+        {/* En el celular no se puede arrastrar: estas flechas hacen lo mismo. */}
+        <span className="ficha-flechas">
+          <button className="flecha" disabled={!anterior} onClick={e => moverA(e, anterior)}
+                  aria-label="Mover a la columna anterior">←</button>
+          <button className="flecha" disabled={!siguiente} onClick={e => moverA(e, siguiente)}
+                  aria-label="Mover a la columna siguiente">→</button>
+        </span>
       </div>
     </article>
   );

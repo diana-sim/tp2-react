@@ -2,10 +2,8 @@ import { useState } from 'react';
 import { ESTADOS } from '../data/estados.js';
 import Columna from './Columna.jsx';
 
-// El tablero arma las 4 columnas y recuerda qué ficha se está arrastrando.
-// Ese dato ("arrastrando") es estado de interfaz: solo le importa al tablero,
-// por eso vive acá y no en App.
-export default function Tablero({ tareas, onMover, onEliminar }) {
+// Vista Tablero: las 4 columnas, y recuerda qué ficha se está arrastrando.
+export default function Tablero({ tareas, ritmo, hpd, onAbrir, onMover }) {
   const [arrastrando, setArrastrando] = useState(null);
 
   const soltarEn = estado => {
@@ -20,11 +18,13 @@ export default function Tablero({ tareas, onMover, onEliminar }) {
           key={est.clave}
           estado={est}
           tareas={tareas.filter(t => t.estado === est.clave)}
+          ritmo={ritmo}
+          hpd={hpd}
           arrastrando={arrastrando}
           onArrastrar={setArrastrando}
           onSoltar={soltarEn}
           onMover={onMover}
-          onEliminar={onEliminar}
+          onAbrir={onAbrir}
         />
       ))}
     </div>

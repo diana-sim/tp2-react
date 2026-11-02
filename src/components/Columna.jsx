@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Ficha from './Ficha.jsx';
 
-export default function Columna({ estado, tareas, arrastrando, onArrastrar, onSoltar, onMover, onEliminar }) {
+export default function Columna({ estado, tareas, ritmo, hpd, arrastrando, onArrastrar, onSoltar, onMover, onAbrir }) {
   // Solo para el resaltado cuando pasás una ficha por encima.
   const [encima, setEncima] = useState(false);
 
@@ -24,10 +24,12 @@ export default function Columna({ estado, tareas, arrastrando, onArrastrar, onSo
         <Ficha
           key={t.id}
           tarea={t}
+          ritmo={ritmo}
+          hpd={hpd}
           fantasma={arrastrando === t.id}
           onArrastrar={onArrastrar}
           onMover={onMover}
-          onEliminar={onEliminar}
+          onAbrir={onAbrir}
         />
       ))}
     </section>
