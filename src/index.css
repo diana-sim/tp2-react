@@ -144,6 +144,7 @@ textarea.campo { resize: vertical; line-height: 1.5; }
 .card-h { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; }
 .card-h h2 { font-size: 14.5px; font-weight: 600; }
 .rejilla { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; }
+.rejilla > * { min-width: 0; } /* que el contenido largo no ensanche la grilla en el celular */
 .rejilla > .card { margin-bottom: 14px; }
 .tabs { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 .tab { font-size: 13px; font-weight: 500; border-radius: 8px; padding: 6px 13px; color: var(--tinta-2); border: 1px solid transparent; }
@@ -398,7 +399,7 @@ textarea.campo { resize: vertical; line-height: 1.5; }
   }
   .logo { display: none; }
   .nav { width: auto; white-space: nowrap; padding: 8px 10px; }
-  .side-pie { display: none; } /* en el celular, cada sección ya tiene su botón "+ Nueva entrega" */
+
   .main { padding: 18px 16px 50px; }
   .mini-board { grid-template-columns: 1fr; }
   .fila-sit { width: 130px; }
@@ -481,3 +482,89 @@ textarea.campo { resize: vertical; line-height: 1.5; }
 .dev-op:hover { background: var(--fondo); }
 .dev-op.on { background: var(--tinta); color: #fff; }
 .aviso-dev { background: #FFF8DB; border: 1px dashed #E8D58A; color: #7A6418; border-radius: 9px; padding: 8px 12px; font-size: 12.5px; margin-bottom: 14px; }
+
+/* ============================================================
+   Login / signup
+   ============================================================ */
+.login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+.login-caja { width: 100%; max-width: 360px; background: var(--panel); border: 1px solid var(--linea); border-radius: 16px; padding: 28px 26px; }
+.login-caja .mascota { margin: 0 auto 10px; }
+.login-caja h1 { font-size: 21px; font-weight: 600; letter-spacing: -.02em; text-align: center; }
+.login-caja > .sub { text-align: center; margin: 4px 0 18px; }
+.login-btn { margin-top: 18px; padding: 10px 14px; }
+.login-cambio { text-align: center; font-size: 13px; color: var(--tinta-2); margin-top: 14px; }
+
+/* ============================================================
+   Nueva entrega arriba + perfil abajo (estilo Notion)
+   ============================================================ */
+.side-nueva { margin-bottom: 14px; }
+.side-pie { border-top: 1px solid var(--linea); padding-top: 10px; }
+.perfil { position: relative; }
+.perfil-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; border-radius: 10px; transition: background .12s; }
+.perfil-btn:hover, .perfil-btn[aria-expanded="true"] { background: var(--fondo); }
+.avatar { width: 32px; height: 32px; flex: none; border-radius: 50%; background: var(--rosa); color: #fff; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+.avatar-g { width: 38px; height: 38px; font-size: 16px; }
+.perfil-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; text-align: left; }
+.perfil-nom { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.perfil-mail { font-size: 11.5px; color: var(--tinta-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.perfil-flecha { color: var(--tinta-3); font-size: 12px; }
+.perfil-menu {
+  position: absolute; bottom: calc(100% + 8px); left: 0; right: 0; z-index: 25;
+  background: var(--panel); border: 1px solid var(--linea); border-radius: 12px; padding: 8px;
+  box-shadow: 0 8px 24px rgba(35, 34, 31, .12);
+}
+.perfil-cab { display: flex; align-items: center; gap: 10px; padding: 6px 6px 10px; border-bottom: 1px solid var(--linea); margin-bottom: 6px; }
+.perfil-cab > div { min-width: 0; }
+.perfil-op { display: block; width: 100%; padding: 8px; border-radius: 8px; font-size: 13px; }
+.perfil-op:hover { background: var(--fondo); }
+.perfil-salir { color: #B4485F; }
+.perfil-sep { height: 1px; background: var(--linea); margin: 6px 0; }
+.perfil-form { display: flex; gap: 6px; padding: 4px 2px 6px; }
+.perfil-form .campo { padding: 6px 9px; font-size: 13px; }
+.perfil-menu .dev { margin: 6px 0 0; }
+@media (max-width: 760px) {
+  /* en el celular: el botón de nueva entrega ya está en cada sección, y del perfil queda solo el avatar */
+  .side-nueva { display: none; }
+  .side { overflow: visible; }
+  .side-pie { margin: 0 0 0 auto; padding: 0; border-top: none; }
+  .perfil-btn { padding: 2px; }
+  .perfil-txt, .perfil-flecha { display: none; }
+  .perfil-menu { top: calc(100% + 6px); bottom: auto; left: auto; right: 0; width: 260px; }
+}
+
+/* ============================================================
+   Menú lateral colapsable + email completo en el perfil
+   ============================================================ */
+.side { transition: width .18s ease, padding .18s ease; }
+.logo { position: relative; }
+.logo-txt { flex: 1; min-width: 0; }
+.side-toggle { color: var(--tinta-3); padding: 5px; border-radius: 7px; display: flex; }
+.side-toggle:hover { background: var(--fondo); color: var(--tinta); }
+.side-nueva { gap: 6px; }
+.nav { position: relative; }
+.perfil-mail-completo { white-space: normal; overflow: visible; overflow-wrap: break-word; line-height: 1.35; }
+.perfil-menu { min-width: 240px; }
+
+.app.colapsado .side { width: 68px; padding: 16px 10px; align-items: center; }
+.app.colapsado .logo { flex-direction: column; gap: 10px; padding: 4px 0 14px; }
+.app.colapsado .logo-txt,
+.app.colapsado .side-txt,
+.app.colapsado .perfil-txt,
+.app.colapsado .perfil-flecha { display: none; }
+.app.colapsado .side-nueva { width: 40px; height: 40px; padding: 0; border-radius: 11px; }
+.app.colapsado .nav { width: 44px; height: 40px; justify-content: center; padding: 0; }
+.app.colapsado .nav .cnt { position: absolute; top: 2px; right: 0; padding: 0 5px; font-size: 10px; }
+.app.colapsado .side-pie { width: 100%; display: flex; justify-content: center; }
+.app.colapsado .perfil-btn { width: auto; padding: 4px; }
+.app.colapsado .perfil-menu { left: calc(100% + 10px); right: auto; bottom: 0; width: 260px; }
+
+@media (max-width: 760px) {
+  /* en el celular el menú ya es una barra arriba: no se colapsa */
+  .side-toggle { display: none; }
+  .app.colapsado .side { width: 100%; padding: 8px 10px; }
+  .app.colapsado .side-txt { display: inline; }
+  .app.colapsado .nav { width: auto; padding: 8px 10px; }
+  .app.colapsado .nav .cnt { position: static; }
+  .app.colapsado .perfil-menu { left: auto; right: 0; top: calc(100% + 6px); bottom: auto; }
+  .app.colapsado .side-pie { width: auto; }
+}

@@ -5,12 +5,15 @@ import FilaTarea from '../components/FilaTarea.jsx';
 import Mascota from '../components/Mascota.jsx';
 
 // Sección "Hoy": un resumen para arrancar el día sin tener que mirar todo.
-export default function VistaHoy({ tareas, ritmo, hpd, onAbrir, onNueva, onVerEntregas, onVerRitmo }) {
+export default function VistaHoy({ tareas, ritmo, hpd, nombre, onAbrir, onNueva, onVerEntregas, onVerRitmo }) {
+  // "Buenas noches, Diana" (si no cargó nombre, solo "Buenas noches")
+  const titulo = nombre ? `${saludo()}, ${nombre}` : saludo();
+
   // Primera vez: explicamos cómo funciona en vez de mostrar tarjetas vacías.
   if (tareas.length === 0) {
     return (
       <>
-        <div className="head"><div><h1>{saludo()}</h1><p className="sub cap">{fechaDeHoy()}</p></div></div>
+        <div className="head"><div><h1>{titulo}</h1><p className="sub cap">{fechaDeHoy()}</p></div></div>
         <div className="card bienv con-mascota">
           <Mascota pose="saludando" tamano={110} />
           <div>
@@ -50,7 +53,7 @@ export default function VistaHoy({ tareas, ritmo, hpd, onAbrir, onNueva, onVerEn
     <>
       <div className="head">
         <div>
-          <h1>{saludo()}</h1>
+          <h1>{titulo}</h1>
           <p className="sub"><span className="cap">{fechaDeHoy()}</span> · {resumen}</p>
         </div>
         <button className="btn btn-pri" onClick={onNueva}>+ Nueva entrega</button>
