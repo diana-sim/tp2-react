@@ -7,6 +7,8 @@ Registro de los cambios de cada versión publicada de **Al día**.
 - **Compartir con solicitud:** invitar a alguien ya no lo suma directo. Le llega una
   solicitud ("Sofi te invitó a TP2") arriba de todo, en cualquier sección, y elige
   **Aceptar** o **Rechazar**. Hasta que acepta, la entrega no aparece en sus listas.
+- **Invitar al crear:** en *Nueva entrega* se pueden sumar emails para invitar desde el principio.
+  Antes de crear se verifica que tengan cuenta; si alguno no existe, se avisa y no se crea nada.
 - **Invitaciones pendientes:** en "Compartida con" se ven las solicitudes enviadas
   ("esperando respuesta") y se pueden cancelar.
 - **Responsable por parte, más visible:** cada parte muestra el circulito con las iniciales de

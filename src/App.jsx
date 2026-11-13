@@ -124,14 +124,27 @@ export default function App() {
   const materias = [...new Set(lista.map(t => t.materia))]; // para sugerir al escribir
 
   // ---------- operaciones (siempre: primero Firestore, después la pantalla) ----------
-  const crear = async datos => {
+  // personas = a quiénes invitar desde el formulario (ya verificadas: tienen cuenta).
+  // Las invitaciones viajan DENTRO de la entrega nueva: se guarda todo en una sola escritura,
+  // así no puede quedar una entrega creada con solicitudes a medio enviar.
+  const crear = async (datos, personas = []) => {
     setError('');
+    const quienInvita = nombre || usuario.email;
+    const conInvitados = personas.length && !enPrueba
+      ? {
+          ...datos,
+          invitados: personas.map(p => p.uid),
+          invitadosInfo: Object.fromEntries(personas.map(p => [p.uid, { email: p.email, nombre: p.nombre || '', invitadoPor: quienInvita }])),
+        }
+      : datos;
     try {
-      const nueva = enPrueba ? entregaDePrueba(datos) : await crearTarea(uid, datos, perfil);
+      const nueva = enPrueba ? entregaDePrueba(datos) : await crearTarea(uid, conInvitados, perfil);
       setLista(prev => [...prev, nueva]);
       setCreando(false);
       setAbierta(nueva.id);
-      setAviso('Entrega creada');
+      if (enPrueba && personas.length) setAviso('Entrega creada (en modo prueba no se envían solicitudes)');
+      else if (personas.length) setAviso(`Entrega creada · ${personas.length === 1 ? 'solicitud enviada' : `${personas.length} solicitudes enviadas`}`);
+      else setAviso('Entrega creada');
       return true;
     } catch {
       return false; // el formulario muestra el error
@@ -387,7 +400,7 @@ export default function App() {
         />
       )}
 
-      {creando && <FormNueva materias={materias} ritmo={ritmo} onCrear={crear} onCerrar={() => setCreando(false)} />}
+      {creando && <FormNueva materias={materias} ritmo={ritmo} miEmail={usuario.email} onCrear={crear} onCerrar={() => setCreando(false)} />}
       {bienvenida && <Bienvenida onElegir={empezar} />}
       {aviso && <div className="toast">{aviso}</div>}
     </div>

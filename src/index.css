@@ -642,3 +642,12 @@ textarea.campo { resize: vertical; line-height: 1.5; }
   .solicitud { flex-direction: column; align-items: stretch; }
   .solicitud-btns .btn { flex: 1; }
 }
+
+/* Invitar desde el formulario de nueva entrega (v3.1) */
+.invitar-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.invitar-chip {
+  display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
+  background: var(--lila-bg); color: #5B4E8C; border-radius: 99px; padding: 3px 4px 3px 10px;
+  font-size: 12.5px; overflow-wrap: anywhere;
+}
+.invitar-chip .x { padding: 0 6px; }
