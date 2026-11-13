@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { ESTADOS_SUB } from '../data/estados.js';
+import { nombreVisible } from '../lib/personas.js';
 
 // Mini tablero de subtareas (partes de la entrega) dentro del detalle. Es opcional.
 // Recibe la lista y una función onCambiar(nuevaLista) que guarda en Firestore.
 // Es el mismo patrón del tablero grande, pero más chico.
-export default function Subtareas({ subtareas, onCambiar }) {
+// Desde la v3, si la entrega está compartida, cada parte puede tener un responsable.
+export default function Subtareas({ subtareas, onCambiar, miembros = [], miembrosInfo = {}, uid }) {
   const [titulo, setTitulo] = useState('');
   const [horas, setHoras] = useState('');
   const [error, setError] = useState('');
   const [arrastrando, setArrastrando] = useState(null);
   const [encima, setEncima] = useState(null);
 
+  // El selector de responsable solo tiene sentido si hay con quién repartir.
+  const compartida = miembros.length > 1;
 
   // AGREGAR una subtarea
   const agregar = async e => {
@@ -19,13 +23,17 @@ export default function Subtareas({ subtareas, onCambiar }) {
     const h = horas === '' ? 0 : parseFloat(horas); // las horas son opcionales
     if (isNaN(h) || h < 0) return setError('Las horas tienen que ser un número positivo.');
     setError('');
-    const nueva = { id: crypto.randomUUID(), titulo: titulo.trim(), horas: h, estado: 'pendiente' };
+    const nueva = { id: crypto.randomUUID(), titulo: titulo.trim(), horas: h, estado: 'pendiente', asignadoA: null };
     const salioBien = await onCambiar([...subtareas, nueva]);
     if (salioBien) { setTitulo(''); setHoras(''); }
   };
 
   // MOVER: cambia el estado de una subtarea
   const mover = (id, estado) => onCambiar(subtareas.map(s => (s.id === id ? { ...s, estado } : s)));
+
+  // ASIGNAR: quién se hace cargo de esta parte ('' = sin asignar)
+  const asignar = (id, quien) =>
+    onCambiar(subtareas.map(s => (s.id === id ? { ...s, asignadoA: quien || null } : s)));
 
   // Clic en una subtarea: pasa al estado siguiente (pendiente → en curso → hecha → pendiente).
   // Sirve en el celular, donde arrastrar no anda.
@@ -49,7 +57,11 @@ export default function Subtareas({ subtareas, onCambiar }) {
     <div className="bloque">
       <div className="bloque-h">
         <h3>Partes de la entrega</h3>
-        {subtareas.length > 0 && <span className="nota">arrastrá entre columnas o tocá para avanzar</span>}
+        {subtareas.length > 0 && (
+          <span className="nota">
+            {compartida ? 'arrastrá, tocá para avanzar y repartí quién hace qué' : 'arrastrá entre columnas o tocá para avanzar'}
+          </span>
+        )}
       </div>
 
       {subtareas.length === 0 && (
@@ -77,6 +89,23 @@ export default function Subtareas({ subtareas, onCambiar }) {
                      onDragEnd={() => { setArrastrando(null); setEncima(null); }}
                      onClick={() => avanzar(s)}>
                   <div className={'mini-t' + (col.clave === 'hecha' ? ' ok' : '')}>{s.titulo}</div>
+
+                  {compartida && (
+                    // El clic no tiene que avanzar el estado de la parte, por eso lo frenamos acá.
+                    <select className={'mini-asig' + (s.asignadoA ? ' asignada' : '')}
+                            value={s.asignadoA || ''}
+                            aria-label={`Responsable de ${s.titulo}`}
+                            onClick={e => e.stopPropagation()}
+                            onChange={e => { e.stopPropagation(); asignar(s.id, e.target.value); }}>
+                      <option value="">Sin asignar</option>
+                      {miembros.map(m => (
+                        <option key={m} value={m}>
+                          {nombreVisible(miembrosInfo[m])}{m === uid ? ' (vos)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
                   <div className="mini-p">
                     <span>{s.horas ? `${s.horas} h` : ''}</span>
                     <button className="x" onClick={e => borrar(e, s.id)} aria-label="Eliminar subtarea">×</button>

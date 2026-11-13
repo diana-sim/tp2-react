@@ -7,6 +7,8 @@ import {
 import { fmtFecha, fmtHoras, textoDias } from '../lib/formato.js';
 import Anillo from './Anillo.jsx';
 import Subtareas from './Subtareas.jsx';
+import Compartir from './Compartir.jsx';
+import { iniciales, nombreVisible } from '../lib/personas.js';
 import EtiquetaSituacion from './EtiquetaSituacion.jsx';
 import Mascota from './Mascota.jsx';
 
@@ -15,7 +17,9 @@ const COLOR_ANILLO = { rojo: '#F2A8C4', ambar: '#F0B47E', oliva: '#A8C86E', gris
 // Panel lateral con el detalle de UNA entrega.
 // Se abre encima de la sección actual, así al cerrarlo seguís donde estabas.
 // onActualizar(cambios, mensaje) guarda en Firestore solo los campos que cambian.
-export default function PanelDetalle({ tarea, ritmo, hpd, materias, onActualizar, onEliminar, onCerrar }) {
+export default function PanelDetalle({
+  tarea, ritmo, hpd, materias, uid, onActualizar, onEliminar, onCerrar, onSumarMiembro, onQuitarMiembro,
+}) {
   const sit = situacion(tarea, ritmo.factor, hpd);
   const terminada = tarea.estado === 'terminada';
   const dias = diasRestantes(tarea);
@@ -33,6 +37,15 @@ export default function PanelDetalle({ tarea, ritmo, hpd, materias, onActualizar
       <aside className="panel" role="dialog" aria-label={tarea.titulo}>
         <div className="panel-h">
           <span className="tag">{tarea.materia}</span>
+          {(tarea.miembros || []).length > 1 && (
+            <span className="avatares" aria-label={`Compartida con ${tarea.miembros.length} personas`}>
+              {tarea.miembros.map(m => (
+                <span className="avatar avatar-sm" key={m} title={nombreVisible(tarea.miembrosInfo?.[m])}>
+                  {iniciales(tarea.miembrosInfo?.[m])}
+                </span>
+              ))}
+            </span>
+          )}
           <button className="x x-grande" onClick={onCerrar} aria-label="Cerrar">×</button>
         </div>
 
@@ -75,7 +88,10 @@ export default function PanelDetalle({ tarea, ritmo, hpd, materias, onActualizar
           </div>
 
           {/* ---------- partes ---------- */}
-          <Subtareas subtareas={tarea.subtareas} onCambiar={subtareas => onActualizar({ subtareas })} />
+          <Subtareas subtareas={tarea.subtareas} onCambiar={subtareas => onActualizar({ subtareas })}
+                     miembros={tarea.miembros} miembrosInfo={tarea.miembrosInfo} uid={uid} />
+
+          <Compartir tarea={tarea} uid={uid} onSumar={onSumarMiembro} onQuitar={onQuitarMiembro} />
 
                     <Notas tarea={tarea} onActualizar={onActualizar} />
           <Links tarea={tarea} onActualizar={onActualizar} />
@@ -97,10 +113,16 @@ export default function PanelDetalle({ tarea, ritmo, hpd, materias, onActualizar
             <Cierre tarea={tarea} ritmo={ritmo} onActualizar={onActualizar} />
           </div>
 
-          <button className="btn btn-sm btn-peligro"
-                  onClick={() => window.confirm(`¿Eliminar "${tarea.titulo}"? No se puede deshacer.`) && onEliminar()}>
-            Eliminar entrega
-          </button>
+          {tarea.propietario === uid ? (
+            <button className="btn btn-sm btn-peligro"
+                    onClick={() => window.confirm(`¿Eliminar "${tarea.titulo}"? Se elimina para todos y no se puede deshacer.`) && onEliminar()}>
+              Eliminar entrega
+            </button>
+          ) : (
+            <p className="aviso">
+              Esta entrega la creó {nombreVisible(tarea.miembrosInfo?.[tarea.propietario])}. Podés editarla, pero no eliminarla.
+            </p>
+          )}
         </div>
       </aside>
     </>

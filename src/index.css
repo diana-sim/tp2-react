@@ -568,3 +568,42 @@ textarea.campo { resize: vertical; line-height: 1.5; }
   .app.colapsado .perfil-menu { left: auto; right: 0; top: calc(100% + 6px); bottom: auto; }
   .app.colapsado .side-pie { width: auto; }
 }
+
+/* ============================================================
+   v3 · Entregas compartidas
+   ============================================================ */
+
+/* Circulito con iniciales. Se usa en el detalle y en la lista de miembros. */
+.avatar-sm { width: 24px; height: 24px; font-size: 11px; font-weight: 600; background: var(--lila); }
+
+/* Fila de avatares superpuestos en el encabezado del panel */
+.avatares { display: flex; margin-right: auto; margin-left: 4px; }
+.avatares .avatar-sm { border: 2px solid var(--panel); margin-left: -7px; }
+.avatares .avatar-sm:first-child { margin-left: 0; }
+
+/* Lista de personas que comparten la entrega */
+.miembros { list-style: none; display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.miembro { display: flex; align-items: center; gap: 10px; padding: 6px 2px; }
+.miembro-txt { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.miembro-n { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.miembro-e { font-size: 11.5px; color: var(--tinta-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Selector de responsable dentro de cada parte de la entrega */
+.mini-asig {
+  width: 100%;
+  margin-top: 7px;
+  padding: 3px 6px;
+  font-size: 11.5px;
+  color: var(--tinta-2);
+  background: #F7F5F0;
+  border: 1px solid var(--linea);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.mini-asig:hover { border-color: var(--linea-2); }
+.mini-asig:focus { outline: 2px solid var(--celeste); outline-offset: 1px; }
+.mini-asig.asignada { background: var(--lila-bg); border-color: #DCD5F2; color: #5B4E8C; font-weight: 500; }
+
+@media (max-width: 720px) {
+  .miembro-e { display: none; }
+}

@@ -2,6 +2,40 @@
 
 Registro de los cambios de cada versión publicada de **Al día**.
 
+## v3 — Entregas compartidas
+
+Hasta acá la app era personal: cada quien veía solo sus entregas. Ahora una entrega
+puede tener varias personas y repartirse el trabajo.
+
+- **Compartir una entrega:** desde el detalle se suma a alguien por su email y los dos
+  ven la misma entrega, con los mismos cambios.
+- **Responsable por parte:** cada parte de la entrega puede asignarse a una persona,
+  para saber quién hace qué.
+- **Quién está en la entrega:** avatares con las iniciales en el encabezado del detalle
+  y lista de personas con su email.
+- **Salir o quitar:** el propietario puede quitar a alguien; cada quien puede salirse de
+  una entrega que le compartieron. Al sacar a una persona, sus partes quedan sin asignar.
+- **Eliminar:** solo puede eliminar la entrega quien la creó. Los demás la editan, no la borran.
+- **Directorio de personas:** al entrar, cada cuenta deja su email y su nombre en
+  `usuarios/{uid}`. Hace falta para poder encontrar a quién invitar.
+- **Nuevo lugar de los datos:** las entregas pasaron de `usuarios/{uid}/tareas/{id}` a una
+  colección propia `tareas/{id}` con una lista de miembros. Era la única forma de que
+  dos personas pudieran acceder a la misma entrega.
+- **Migración automática:** la primera vez que alguien entra con la v3, sus entregas
+  anteriores se copian al formato nuevo. Las originales quedan como respaldo.
+- **Reglas de Firestore nuevas:** el permiso ya no es "solo el dueño de la carpeta" sino
+  "cualquiera que esté en la lista de miembros de esta entrega".
+
+## v2 — Cuentas, perfil y menú
+
+- **Cuentas con email y contraseña:** pantalla de login y registro
+  (`src/components/Login.jsx`, `src/services/auth.js`), con mensajes de error traducidos.
+  Antes la identidad era anónima y los datos quedaban atados al navegador; ahora la
+  persona entra desde cualquier compu o celular y encuentra sus entregas.
+- **Perfil:** menú con el nombre y el email de la cuenta, cambio de nombre y cerrar sesión.
+- **Menú lateral colapsable:** se puede achicar a solo íconos para ganar espacio,
+  y la preferencia se recuerda en Firestore.
+
 ## v1.1 — Posti y modo de prueba
 
 - **Mascota:** Posti, un post-it que acompaña con 4 poses:
