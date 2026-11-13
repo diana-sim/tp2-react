@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   leerTareas, crearTarea, actualizarTarea, borrarTarea, leerPreferencias, guardarPreferencias,
+  sumarMiembro, quitarMiembro, migrarTareasViejas, actualizarFichaEnTareas,
 } from './services/tareas.js';
+import { registrarUsuario } from './services/usuarios.js';
 import { escucharSesion, salir } from './services/auth.js';
 import Login from './components/Login.jsx';
 import { calcularRitmo, HORAS_POR_DIA_DEFECTO } from './lib/calculos.js';
@@ -57,13 +59,30 @@ export default function App() {
         setCargando(true);
         const id = u.uid;
         try {
-          // Promise.all: pide las dos cosas a la vez y espera a que lleguen ambas.
-          const [lista, preferencias] = await Promise.all([leerTareas(id), leerPreferencias(id)]);
+          const preferencias = await leerPreferencias(id);
+          const ficha = { email: u.email, nombre: preferencias?.nombre || '' };
+
+          // Dejamos su email en el directorio para que puedan invitarla a entregas.
+          await registrarUsuario(id, u.email, ficha.nombre);
+
+          // Primera vez con la v3: las entregas de antes estaban dentro del usuario.
+          // Las copiamos a la colección compartida. Si falla, la app sigue funcionando.
+          let migradas = 0;
+          if (!preferencias?.migradoV3) {
+            try {
+              migradas = await migrarTareasViejas(id, ficha);
+            } catch {
+              setError('No se pudieron pasar tus entregas al formato nuevo. Probá recargar la página.');
+            }
+          }
+
+          const lista = await leerTareas(id);
           setTareas(lista);
-          setPrefs(preferencias);
+          setPrefs({ ...preferencias, migradoV3: true });
           setColapsado(!!preferencias?.menuColapsado);
           if (preferencias?.vistaPreferida) setVista(preferencias.vistaPreferida);
           else setBienvenida(true); // nunca eligió vista: es la primera vez
+          if (migradas > 0) setAviso(`Listo: ${migradas} ${migradas === 1 ? 'entrega preparada' : 'entregas preparadas'} para compartir`);
         } catch {
           setError('No se pudieron cargar tus entregas. Revisá tu conexión y recargá.');
         } finally {
@@ -82,6 +101,9 @@ export default function App() {
   // ---------- valores derivados ----------
   const hpd = prefs?.horasPorDia || HORAS_POR_DIA_DEFECTO;   // horas de estudio por día
   const nombre = prefs?.nombre || '';                        // para saludar: "Buenas noches, Diana"
+  const perfil = { email: usuario?.email || '', nombre };    // cómo me ven los demás en una entrega compartida
+  // En modo prueba las entregas son ficticias y su "dueño" es el usuario demo.
+  const uidVista = enPrueba ? 'demo' : uid;
   const ritmo = useMemo(() => calcularRitmo(lista), [lista]);
   const tareaAbierta = lista.find(t => t.id === abierta);
   const activas = lista.filter(t => t.estado !== 'terminada').length;
@@ -91,7 +113,7 @@ export default function App() {
   const crear = async datos => {
     setError('');
     try {
-      const nueva = enPrueba ? entregaDePrueba(datos) : await crearTarea(uid, datos);
+      const nueva = enPrueba ? entregaDePrueba(datos) : await crearTarea(uid, datos, perfil);
       setLista(prev => [...prev, nueva]);
       setCreando(false);
       setAbierta(nueva.id);
@@ -105,7 +127,7 @@ export default function App() {
   const actualizar = async (id, cambios, mensaje) => {
     setError('');
     try {
-      if (!enPrueba) await actualizarTarea(uid, id, cambios);
+      if (!enPrueba) await actualizarTarea(id, cambios);
       setLista(prev => prev.map(t => (t.id === id ? { ...t, ...cambios } : t)));
       if (mensaje) setAviso(mensaje);
       return true;
@@ -118,12 +140,63 @@ export default function App() {
   const eliminar = async id => {
     setError('');
     try {
-      if (!enPrueba) await borrarTarea(uid, id);
+      if (!enPrueba) await borrarTarea(id);
       setLista(prev => prev.filter(t => t.id !== id));
       setAbierta(null);
       setAviso('Entrega eliminada');
     } catch {
       setError('No se pudo eliminar la entrega.');
+    }
+  };
+
+  // ---------- compartir una entrega ----------
+  // Después de tocar la lista de miembros releemos la entrega desde el estado local:
+  // los cambios que hace la otra persona se ven al recargar.
+  const sumarPersona = async persona => {
+    if (enPrueba) { setError('En modo prueba no se puede compartir: son entregas ficticias.'); return false; }
+    try {
+      await sumarMiembro(tareaAbierta.id, persona);
+      setTareas(prev => prev.map(t => (t.id === tareaAbierta.id
+        ? { ...t,
+            miembros: [...t.miembros, persona.uid],
+            miembrosInfo: { ...t.miembrosInfo, [persona.uid]: { email: persona.email, nombre: persona.nombre || '' } } }
+        : t)));
+      setAviso('Entrega compartida');
+      return true;
+    } catch {
+      setError('No se pudo compartir la entrega. Probá de nuevo.');
+      return false;
+    }
+  };
+
+  const quitarPersona = async quien => {
+    if (enPrueba) return false;
+    const tarea = tareaAbierta;
+    try {
+      await quitarMiembro(tarea, quien);
+      if (quien === uid) {
+        // Me salí de una entrega que me habían compartido: deja de aparecerme.
+        setTareas(prev => prev.filter(t => t.id !== tarea.id));
+        setAbierta(null);
+        setAviso('Saliste de la entrega');
+        return true;
+      }
+      setTareas(prev => prev.map(t => {
+        if (t.id !== tarea.id) return t;
+        const info = { ...t.miembrosInfo };
+        delete info[quien];
+        return {
+          ...t,
+          miembros: t.miembros.filter(m => m !== quien),
+          miembrosInfo: info,
+          subtareas: t.subtareas.map(sub => (sub.asignadoA === quien ? { ...sub, asignadoA: null } : sub)),
+        };
+      }));
+      setAviso('Persona quitada de la entrega');
+      return true;
+    } catch {
+      setError('No se pudo quitar a esa persona. Probá de nuevo.');
+      return false;
     }
   };
 
@@ -190,7 +263,20 @@ export default function App() {
                colapsado={colapsado} onAlternar={alternarMenu}
                perfil={{
                  nombre, email: usuario.email, onSalir: cerrarSesion,
-                 onCambiarNombre: n => guardarPreferencia({ nombre: n }),
+                 onCambiarNombre: async n => {
+                   const salioBien = await guardarPreferencia({ nombre: n });
+                   // Que el nombre nuevo se vea también en las entregas que comparte.
+                   if (salioBien && !enPrueba) {
+                     try {
+                       await registrarUsuario(uid, usuario.email, n);
+                       await actualizarFichaEnTareas(uid, { email: usuario.email, nombre: n });
+                       setTareas(prev => prev.map(t => (t.miembrosInfo?.[uid]
+                         ? { ...t, miembrosInfo: { ...t.miembrosInfo, [uid]: { email: usuario.email, nombre: n } } }
+                         : t)));
+                     } catch { /* el nombre ya quedó guardado; los demás lo verán al recargar */ }
+                   }
+                   return salioBien;
+                 },
                  modo: MOSTRAR_DEV ? modo : null, onCambiarModo: cambiarModo,
                }} />
 
@@ -216,6 +302,9 @@ export default function App() {
           ritmo={ritmo}
           hpd={hpd}
           materias={materias}
+          uid={uidVista}
+          onSumarMiembro={sumarPersona}
+          onQuitarMiembro={quitarPersona}
           onActualizar={(cambios, mensaje) => actualizar(tareaAbierta.id, cambios, mensaje)}
           onEliminar={() => eliminar(tareaAbierta.id)}
           onCerrar={() => setAbierta(null)}

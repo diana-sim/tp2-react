@@ -6,13 +6,30 @@ const fecha = dias => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 const id = () => crypto.randomUUID();
-const parte = (titulo, horas, estado) => ({ id: id(), titulo, horas, estado });
+const parte = (titulo, horas, estado, asignadoA = null) => ({ id: id(), titulo, horas, estado, asignadoA });
+
+// En modo prueba la entrega es "de" un usuario ficticio llamado demo.
+// Algunas están compartidas con otro usuario ficticio para poder ver cómo funciona.
+const YO = 'demo';
+const COMPANERA = 'demo-2';
+const FICHAS = {
+  [YO]: { nombre: 'Vos', email: 'vos@ejemplo.com' },
+  [COMPANERA]: { nombre: 'Sofi Rivas', email: 'sofi@ejemplo.com' },
+};
+export const DEMO_COMPANERA = COMPANERA;
 
 // Misma forma que una entrega real (ver services/tareas.js)
-export const entregaDePrueba = datos => ({
-  id: id(), estado: 'pendiente', creada: Date.now(), fechaEntrega: '', horasEstimadas: 0,
-  horasReales: 0, notas: '', links: [], subtareas: [], ...datos,
-});
+export const entregaDePrueba = datos => {
+  const miembros = datos?.miembros || [YO];
+  return {
+    id: id(), estado: 'pendiente', creada: Date.now(), fechaEntrega: '', horasEstimadas: 0,
+    horasReales: 0, notas: '', links: [], subtareas: [],
+    propietario: YO,
+    miembrosInfo: Object.fromEntries(miembros.map(m => [m, FICHAS[m]])),
+    ...datos,
+    miembros,
+  };
+};
 
 export const crearDemo = () => [
   // ---------- vencida ----------
@@ -22,7 +39,8 @@ export const crearDemo = () => [
   entregaDePrueba({
     titulo: 'Informe técnico TPF', materia: 'Tecno IV', fechaEntrega: fecha(2), estado: 'en-curso',
     notas: 'El profe pidió normas APA y planos en A3.',
-    subtareas: [parte('Memoria descriptiva', 4, 'hecha'), parte('Cálculos de mecanismo', 5, 'en-curso'), parte('Planos de conjunto', 4, 'pendiente')],
+    miembros: [YO, COMPANERA],
+    subtareas: [parte('Memoria descriptiva', 4, 'hecha', YO), parte('Cálculos de mecanismo', 5, 'en-curso', COMPANERA), parte('Planos de conjunto', 4, 'pendiente', null)],
   }),
 
   // ---------- vence pronto (sin estimar) ----------
