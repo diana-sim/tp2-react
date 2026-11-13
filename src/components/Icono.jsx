@@ -6,14 +6,16 @@ const TRAZOS = {
   calendario: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></>,
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
   mas: <path d="M12 5v14M5 12h14" />,
+  grupo: <><circle cx="9" cy="8" r="3.2" /><path d="M3 19.5c0-3.3 2.7-5.6 6-5.6s6 2.3 6 5.6" /><circle cx="17" cy="9" r="2.6" /><path d="M16.2 14c2.7.3 4.8 2.3 4.8 5.3" /></>,
+  sobre: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3.5 6.5l8.5 6.5 8.5-6.5" /></>,
   colapsar: <path d="M11 6l-6 6 6 6M19 6l-6 6 6 6" />,
   expandir: <path d="M5 6l6 6-6 6M13 6l6 6-6 6" />,
   ritmo: <><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2.5M10 2h4" /></>,
 };
 
-export default function Icono({ nombre }) {
+export default function Icono({ nombre, tamano = 16 }) {
   return (
-    <svg className="icono" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    <svg className="icono" width={tamano} height={tamano} viewBox="0 0 24 24" fill="none" stroke="currentColor"
          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {TRAZOS[nombre]}
     </svg>

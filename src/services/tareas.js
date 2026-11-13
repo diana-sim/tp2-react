@@ -10,7 +10,8 @@
 // así que no había forma de que otra persona viera una entrega ajena.
 //
 // Para poder compartirlas hubo que sacarlas afuera, a una colección propia:
-//     tareas/{id}   →  { ..., propietario: uid, miembros: [uid, ...], miembrosInfo: {...} }
+//     tareas/{id}   →  { ..., propietario: uid, miembros: [uid, ...], miembrosInfo: {...},
+//                         invitados: [uid, ...], invitadosInfo: {...} }   ← solicitudes (v3.1)
 //
 // Ahora la entrega no está adentro de nadie: lleva su propia lista de miembros,
 // y las reglas dicen "entra cualquiera que esté en esa lista".
@@ -31,7 +32,7 @@ const tareasViejas = uid => collection(db, 'usuarios', uid, 'tareas');
 // Completa los campos que falten (por ejemplo, en entregas de versiones anteriores).
 const completar = t => ({
   fechaEntrega: '', horasEstimadas: 0, subtareas: [], notas: '', links: [], horasReales: 0,
-  miembros: [], miembrosInfo: {}, propietario: '', ...t,
+  miembros: [], miembrosInfo: {}, propietario: '', invitados: [], invitadosInfo: {}, ...t,
 });
 
 // Las más viejas primero. Antes lo hacía Firestore con orderBy, pero combinar
@@ -76,14 +77,45 @@ export function borrarTarea(id) {
   return deleteDoc(documento(id));
 }
 
-// ---------- compartir ----------
+// ---------- compartir (con solicitud, desde la v3.1) ----------
+//
+// Ya no se suma a nadie directamente. El flujo es:
+//   1. Un miembro INVITA a alguien  → queda en "invitados" (todavía no ve la entrega en su lista)
+//   2. Esa persona ve la SOLICITUD  → puede aceptar o rechazar
+//   3. Si ACEPTA                    → pasa de "invitados" a "miembros"
+// Las reglas de Firestore hacen cumplir esto: un miembro no puede agregar miembros a mano.
 
-// Suma una persona a la entrega.
-// arrayUnion agrega sin duplicar y sin pisar lo que otro haya agregado al mismo tiempo.
-export function sumarMiembro(id, persona) {
+// 1. Invitar. arrayUnion agrega sin duplicar y sin pisar lo que otro haya agregado al mismo tiempo.
+export function invitarPersona(id, persona, quienInvita) {
   return updateDoc(documento(id), {
-    miembros: arrayUnion(persona.uid),
-    [`miembrosInfo.${persona.uid}`]: fichaDe(persona),
+    invitados: arrayUnion(persona.uid),
+    [`invitadosInfo.${persona.uid}`]: { ...fichaDe(persona), invitadoPor: quienInvita },
+  });
+}
+
+// Cancelar una invitación que todavía no respondieron (la usa quien invitó).
+// Rechazar es lo mismo pero lo hace la persona invitada.
+export function cancelarInvitacion(id, uid) {
+  return updateDoc(documento(id), {
+    invitados: arrayRemove(uid),
+    [`invitadosInfo.${uid}`]: deleteField(),
+  });
+}
+export const rechazarInvitacion = cancelarInvitacion;
+
+// 2. Las solicitudes que recibió una persona: entregas donde figura como invitada.
+export async function leerInvitaciones(uid) {
+  const resultado = await getDocs(query(tareas(), where('invitados', 'array-contains', uid)));
+  return porFecha(resultado.docs.map(d => completar({ id: d.id, ...d.data() })));
+}
+
+// 3. Aceptar: en UNA sola escritura sale de invitados y entra a miembros.
+export function aceptarInvitacion(id, uid, perfil) {
+  return updateDoc(documento(id), {
+    invitados: arrayRemove(uid),
+    [`invitadosInfo.${uid}`]: deleteField(),
+    miembros: arrayUnion(uid),
+    [`miembrosInfo.${uid}`]: fichaDe(perfil),
   });
 }
 

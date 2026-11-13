@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   leerTareas, crearTarea, actualizarTarea, borrarTarea, leerPreferencias, guardarPreferencias,
-  sumarMiembro, quitarMiembro, migrarTareasViejas, actualizarFichaEnTareas,
+  quitarMiembro, migrarTareasViejas, actualizarFichaEnTareas,
+  invitarPersona, cancelarInvitacion, leerInvitaciones, aceptarInvitacion, rechazarInvitacion,
 } from './services/tareas.js';
+import Solicitudes from './components/Solicitudes.jsx';
 import { registrarUsuario } from './services/usuarios.js';
 import { escucharSesion, salir } from './services/auth.js';
 import Login from './components/Login.jsx';
@@ -14,7 +16,7 @@ import PanelDetalle from './components/PanelDetalle.jsx';
 import VistaHoy from './views/VistaHoy.jsx';
 import VistaEntregas from './views/VistaEntregas.jsx';
 import VistaRitmo from './views/VistaRitmo.jsx';
-import { crearDemo, entregaDePrueba } from './data/demo.js';
+import { crearDemo, crearInvitacionesDemo, entregaDePrueba } from './data/demo.js';
 
 // Selector de datos de prueba: solo aparece con `npm run dev` (no en Vercel),
 // salvo que se active la variable VITE_MODO_DEV=true.
@@ -24,6 +26,7 @@ const MOSTRAR_DEV = import.meta.env.DEV || import.meta.env.VITE_MODO_DEV === 'tr
 export default function App() {
   // ---------- datos ----------
   const [tareas, setTareas] = useState([]);
+  const [invitaciones, setInvitaciones] = useState([]); // solicitudes para sumarme a entregas ajenas (v3.1)
   const [prefs, setPrefs] = useState(null); // { vistaPreferida, horasPorDia }
   const [usuario, setUsuario] = useState(null); // la persona conectada (null = nadie)
   const uid = usuario?.uid;                      // su id: es el nombre de su carpeta en Firestore
@@ -42,9 +45,12 @@ export default function App() {
   // ---------- modo dev: datos de prueba en memoria (NO se guardan en Firestore) ----------
   const [modo, setModo] = useState('real');               // 'real' | 'vacio' | 'demo'
   const [tareasDemo, setTareasDemo] = useState([]);
+  const [invitacionesDemo, setInvitacionesDemo] = useState([]);
   const enPrueba = modo !== 'real';
   const lista = enPrueba ? tareasDemo : tareas;            // las entregas que se muestran
   const setLista = enPrueba ? setTareasDemo : setTareas;   // y cómo se modifican
+  const solicitudes = enPrueba ? invitacionesDemo : invitaciones;
+  const setSolicitudes = enPrueba ? setInvitacionesDemo : setInvitaciones;
 
   // ---------- sesión: Firebase avisa cuando alguien entra o sale ----------
   useEffect(() => {
@@ -52,7 +58,7 @@ export default function App() {
         setUsuario(u);
         if (!u) {
           // Nadie conectado (o acaba de salir): vaciamos todo y se muestra el Login.
-          setTareas([]); setPrefs(null); setAbierta(null); setModo('real');
+          setTareas([]); setInvitaciones([]); setPrefs(null); setAbierta(null); setModo('real');
           setCargando(false);
           return;
         }
@@ -78,6 +84,14 @@ export default function App() {
 
           const lista = await leerTareas(id);
           setTareas(lista);
+
+          // Solicitudes pendientes. Si las reglas nuevas de Firestore todavía no se publicaron,
+          // esta consulta falla: la app sigue andando, solo que sin solicitudes.
+          try {
+            setInvitaciones(await leerInvitaciones(id));
+          } catch (e) {
+            console.warn('No se pudieron leer las solicitudes. ¿Publicaste las reglas de la v3.1?', e);
+          }
           setPrefs({ ...preferencias, migradoV3: true });
           setColapsado(!!preferencias?.menuColapsado);
           if (preferencias?.vistaPreferida) setVista(preferencias.vistaPreferida);
@@ -110,14 +124,27 @@ export default function App() {
   const materias = [...new Set(lista.map(t => t.materia))]; // para sugerir al escribir
 
   // ---------- operaciones (siempre: primero Firestore, después la pantalla) ----------
-  const crear = async datos => {
+  // personas = a quiénes invitar desde el formulario (ya verificadas: tienen cuenta).
+  // Las invitaciones viajan DENTRO de la entrega nueva: se guarda todo en una sola escritura,
+  // así no puede quedar una entrega creada con solicitudes a medio enviar.
+  const crear = async (datos, personas = []) => {
     setError('');
+    const quienInvita = nombre || usuario.email;
+    const conInvitados = personas.length && !enPrueba
+      ? {
+          ...datos,
+          invitados: personas.map(p => p.uid),
+          invitadosInfo: Object.fromEntries(personas.map(p => [p.uid, { email: p.email, nombre: p.nombre || '', invitadoPor: quienInvita }])),
+        }
+      : datos;
     try {
-      const nueva = enPrueba ? entregaDePrueba(datos) : await crearTarea(uid, datos, perfil);
+      const nueva = enPrueba ? entregaDePrueba(datos) : await crearTarea(uid, conInvitados, perfil);
       setLista(prev => [...prev, nueva]);
       setCreando(false);
       setAbierta(nueva.id);
-      setAviso('Entrega creada');
+      if (enPrueba && personas.length) setAviso('Entrega creada (en modo prueba no se envían solicitudes)');
+      else if (personas.length) setAviso(`Entrega creada · ${personas.length === 1 ? 'solicitud enviada' : `${personas.length} solicitudes enviadas`}`);
+      else setAviso('Entrega creada');
       return true;
     } catch {
       return false; // el formulario muestra el error
@@ -149,22 +176,79 @@ export default function App() {
     }
   };
 
-  // ---------- compartir una entrega ----------
-  // Después de tocar la lista de miembros releemos la entrega desde el estado local:
+  // ---------- compartir una entrega (con solicitud, v3.1) ----------
+  // Después de tocar la entrega actualizamos el estado local:
   // los cambios que hace la otra persona se ven al recargar.
-  const sumarPersona = async persona => {
+
+  // Invitar: la persona queda en "invitados" hasta que responda.
+  const invitar = async persona => {
     if (enPrueba) { setError('En modo prueba no se puede compartir: son entregas ficticias.'); return false; }
+    const quienInvita = nombre || usuario.email;
     try {
-      await sumarMiembro(tareaAbierta.id, persona);
+      await invitarPersona(tareaAbierta.id, persona, quienInvita);
       setTareas(prev => prev.map(t => (t.id === tareaAbierta.id
         ? { ...t,
-            miembros: [...t.miembros, persona.uid],
-            miembrosInfo: { ...t.miembrosInfo, [persona.uid]: { email: persona.email, nombre: persona.nombre || '' } } }
+            invitados: [...(t.invitados || []), persona.uid],
+            invitadosInfo: { ...t.invitadosInfo, [persona.uid]: { email: persona.email, nombre: persona.nombre || '', invitadoPor: quienInvita } } }
         : t)));
-      setAviso('Entrega compartida');
+      setAviso('Solicitud enviada');
       return true;
     } catch {
-      setError('No se pudo compartir la entrega. Probá de nuevo.');
+      setError('No se pudo enviar la solicitud. Probá de nuevo.');
+      return false;
+    }
+  };
+
+  const cancelarSolicitud = async quien => {
+    if (enPrueba) return false;
+    try {
+      await cancelarInvitacion(tareaAbierta.id, quien);
+      setTareas(prev => prev.map(t => {
+        if (t.id !== tareaAbierta.id) return t;
+        const info = { ...t.invitadosInfo };
+        delete info[quien];
+        return { ...t, invitados: t.invitados.filter(i => i !== quien), invitadosInfo: info };
+      }));
+      setAviso('Solicitud cancelada');
+      return true;
+    } catch {
+      setError('No se pudo cancelar la solicitud. Probá de nuevo.');
+      return false;
+    }
+  };
+
+  // Responder una solicitud que me llegó.
+  const aceptar = async tarea => {
+    const yo = enPrueba ? 'demo' : uid;
+    try {
+      if (!enPrueba) await aceptarInvitacion(tarea.id, uid, perfil);
+      const info = { ...tarea.invitadosInfo };
+      delete info[yo];
+      const unida = {
+        ...tarea,
+        invitados: tarea.invitados.filter(i => i !== yo),
+        invitadosInfo: info,
+        miembros: [...tarea.miembros, yo],
+        miembrosInfo: { ...tarea.miembrosInfo, [yo]: enPrueba ? { nombre: 'Usuario demo', email: 'vos@ejemplo.com' } : perfil },
+      };
+      setSolicitudes(prev => prev.filter(t => t.id !== tarea.id));
+      setLista(prev => [...prev, unida]);
+      setAviso(`Te sumaste a "${tarea.titulo}"`);
+      return true;
+    } catch {
+      setError('No se pudo aceptar la solicitud. Probá de nuevo.');
+      return false;
+    }
+  };
+
+  const rechazar = async tarea => {
+    try {
+      if (!enPrueba) await rechazarInvitacion(tarea.id, uid);
+      setSolicitudes(prev => prev.filter(t => t.id !== tarea.id));
+      setAviso('Solicitud rechazada');
+      return true;
+    } catch {
+      setError('No se pudo rechazar la solicitud. Probá de nuevo.');
       return false;
     }
   };
@@ -244,6 +328,7 @@ export default function App() {
     setModo(m);
     setAbierta(null);
     setTareasDemo(m === 'demo' ? crearDemo() : []);
+    setInvitacionesDemo(m === 'demo' ? crearInvitacionesDemo() : []);
   };
   const verEntregas = v => { if (v) cambiarVista(v); irA('entregas'); };
 
@@ -289,6 +374,9 @@ export default function App() {
         )}
         {error && <p className="error error-pag">{error}</p>}
 
+        {/* Solicitudes pendientes: se ven en cualquier sección hasta que las respondas */}
+        <Solicitudes invitaciones={solicitudes} uid={uidVista} onAceptar={aceptar} onRechazar={rechazar} />
+
         {seccion === 'hoy' && <VistaHoy {...comunes} nombre={nombre} onVerEntregas={verEntregas} onVerRitmo={() => irA('ritmo')} />}
         {seccion === 'entregas' && <VistaEntregas {...comunes} vista={vista} onCambiarVista={cambiarVista} onMover={mover} />}
         {seccion === 'ritmo' && <VistaRitmo {...comunes} onCambiarHoras={h => guardarPreferencia({ horasPorDia: h })} />}
@@ -303,7 +391,8 @@ export default function App() {
           hpd={hpd}
           materias={materias}
           uid={uidVista}
-          onSumarMiembro={sumarPersona}
+          onInvitar={invitar}
+          onCancelarInvitacion={cancelarSolicitud}
           onQuitarMiembro={quitarPersona}
           onActualizar={(cambios, mensaje) => actualizar(tareaAbierta.id, cambios, mensaje)}
           onEliminar={() => eliminar(tareaAbierta.id)}
@@ -311,7 +400,7 @@ export default function App() {
         />
       )}
 
-      {creando && <FormNueva materias={materias} ritmo={ritmo} onCrear={crear} onCerrar={() => setCreando(false)} />}
+      {creando && <FormNueva materias={materias} ritmo={ritmo} miEmail={usuario.email} onCrear={crear} onCerrar={() => setCreando(false)} />}
       {bienvenida && <Bienvenida onElegir={empezar} />}
       {aviso && <div className="toast">{aviso}</div>}
     </div>

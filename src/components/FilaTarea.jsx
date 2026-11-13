@@ -2,6 +2,7 @@ import { situacion, diasRestantes, progreso } from '../lib/calculos.js';
 import { fmtFecha, textoDias } from '../lib/formato.js';
 import BarraProgreso from './BarraProgreso.jsx';
 import EtiquetaSituacion from './EtiquetaSituacion.jsx';
+import MarcaCompartida from './MarcaCompartida.jsx';
 
 // Una fila de la vista Lista (y de "Hoy").
 export default function FilaTarea({ tarea, ritmo, hpd, onAbrir }) {
@@ -11,7 +12,7 @@ export default function FilaTarea({ tarea, ritmo, hpd, onAbrir }) {
   return (
     <button className="fila" onClick={() => onAbrir(tarea.id)}>
       <div className="fila-izq">
-        <div className="fila-tit">{tarea.titulo}</div>
+        <div className="fila-tit"><MarcaCompartida tarea={tarea} />{tarea.titulo}</div>
         <div className="fila-meta">
           <span className="tag">{tarea.materia}</span>
           <span>{fmtFecha(tarea.fechaEntrega)}</span>

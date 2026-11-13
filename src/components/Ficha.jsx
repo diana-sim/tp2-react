@@ -3,6 +3,7 @@ import { situacion, progreso } from '../lib/calculos.js';
 import { fmtFecha } from '../lib/formato.js';
 import BarraProgreso from './BarraProgreso.jsx';
 import EtiquetaSituacion from './EtiquetaSituacion.jsx';
+import MarcaCompartida from './MarcaCompartida.jsx';
 
 // Una tarjeta del tablero. Tocarla abre el detalle; arrastrarla o usar las flechas la cambia de columna.
 export default function Ficha({ tarea, ritmo, hpd, fantasma, onArrastrar, onMover, onAbrir }) {
@@ -31,7 +32,7 @@ export default function Ficha({ tarea, ritmo, hpd, fantasma, onArrastrar, onMove
         <span className="ficha-fecha">{fmtFecha(tarea.fechaEntrega)}</span>
       </div>
 
-      <div className="ficha-t">{tarea.titulo}</div>
+      <div className="ficha-t"><MarcaCompartida tarea={tarea} />{tarea.titulo}</div>
       <BarraProgreso tarea={tarea} color={tarea.estado === 'terminada' ? 'gris' : sit.color} />
 
       <div className="ficha-p">

@@ -607,3 +607,47 @@ textarea.campo { resize: vertical; line-height: 1.5; }
 @media (max-width: 720px) {
   .miembro-e { display: none; }
 }
+
+/* ============================================================
+   v3.1 · Solicitudes, marca de compartida y responsables
+   ============================================================ */
+
+/* Iconito de personitas antes del título de una entrega compartida */
+.marca-compartida { display: inline-flex; vertical-align: -2px; margin-right: 6px; color: #6A5BB0; }
+.chip .marca-compartida { margin-right: 4px; vertical-align: -1px; color: inherit; opacity: .85; }
+.panel-tit h1 .marca-compartida { vertical-align: -1px; margin-right: 8px; }
+
+/* Aviso de solicitudes pendientes, arriba de cualquier sección */
+.solicitudes { background: var(--lila-bg); border-color: #E3DDF5; }
+.solicitudes .card-h h2 { display: flex; align-items: center; gap: 8px; color: #4A3D85; }
+.solicitud { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-top: 1px solid #E3DDF5; }
+.solicitud:first-of-type { border-top: none; }
+.solicitud-txt { flex: 1; min-width: 0; font-size: 13.5px; }
+.solicitud-meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--tinta-2); margin-top: 4px; }
+.solicitud-meta .tag { background: #fff; }
+.solicitud-btns { display: flex; gap: 6px; flex: none; }
+
+/* Invitaciones enviadas que todavía no respondieron */
+.miembro-pendiente .miembro-n { color: var(--tinta-2); }
+.avatar-pendiente { background: transparent; color: var(--tinta-3); border: 1.5px dashed var(--linea-2); }
+
+/* Responsable de cada parte: circulito + selector */
+.mini-resp { display: flex; align-items: center; gap: 6px; margin-top: 7px; }
+.mini-resp .mini-asig { margin-top: 0; flex: 1; min-width: 0; }
+.avatar-xs { width: 20px; height: 20px; font-size: 9.5px; font-weight: 700; flex: none; }
+.avatar-vacio { background: transparent; color: var(--tinta-3); border: 1.5px dashed var(--linea-2); font-weight: 600; }
+.campo-resp { width: auto; flex: 0 1 170px; padding: 7px 9px; font-size: 13px; }
+
+@media (max-width: 620px) {
+  .solicitud { flex-direction: column; align-items: stretch; }
+  .solicitud-btns .btn { flex: 1; }
+}
+
+/* Invitar desde el formulario de nueva entrega (v3.1) */
+.invitar-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.invitar-chip {
+  display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
+  background: var(--lila-bg); color: #5B4E8C; border-radius: 99px; padding: 3px 4px 3px 10px;
+  font-size: 12.5px; overflow-wrap: anywhere;
+}
+.invitar-chip .x { padding: 0 6px; }

@@ -36,8 +36,29 @@ service cloud.firestore {
         return request.auth != null && request.auth.uid in resource.data.miembros;
       }
 
-      // LEER: solo los miembros de la entrega.
-      allow read: if esMiembro();
+      // Tiene una solicitud pendiente para sumarse (v3.1)
+      function esInvitado() {
+        return request.auth != null && request.auth.uid in resource.data.get('invitados', []);
+      }
+
+      // La persona invitada solo puede RESPONDER su propia solicitud:
+      //   - se saca a sí misma de "invitados" (y de invitadosInfo)
+      //   - y, si acepta, se suma a sí misma a "miembros" (y a miembrosInfo)
+      // No puede tocar nada más de la entrega ni sumar o sacar a otras personas.
+      function respondeSuInvitacion() {
+        let yo = request.auth.uid;
+        let antes = resource.data;
+        let despues = request.resource.data;
+        return despues.diff(antes).affectedKeys().hasOnly(['invitados', 'invitadosInfo', 'miembros', 'miembrosInfo'])
+          && despues.get('invitados', []).toSet() == antes.get('invitados', []).toSet().difference([yo].toSet())
+          && despues.get('invitadosInfo', {}).diff(antes.get('invitadosInfo', {})).affectedKeys().hasOnly([yo])
+          && despues.get('miembrosInfo', {}).diff(antes.get('miembrosInfo', {})).affectedKeys().hasOnly([yo])
+          && (despues.miembros.toSet() == antes.miembros.toSet()                          // rechazó
+              || despues.miembros.toSet() == antes.miembros.toSet().union([yo].toSet())); // aceptó
+      }
+
+      // LEER: los miembros, y también quien fue invitado (para ver de qué se trata la solicitud).
+      allow read: if esMiembro() || esInvitado();
 
       // CREAR: hay que anotarse como propietario y como miembro.
       // Así nadie puede crear una entrega a nombre de otro.
@@ -48,12 +69,16 @@ service cloud.firestore {
                     && request.resource.data.titulo.size() > 0;
 
       // MODIFICAR: cualquier miembro puede editar la entrega (ese es el punto de compartirla),
-      // pero con dos límites:
+      // pero con tres límites:
       //   - no se puede cambiar quién es el propietario
       //   - no se puede dejar al propietario afuera de la lista de miembros
-      allow update: if esMiembro()
-                    && request.resource.data.propietario == resource.data.propietario
-                    && resource.data.propietario in request.resource.data.miembros;
+      //   - no se pueden AGREGAR miembros a mano: solo invitar. Se entra aceptando la solicitud.
+      // Además, la persona invitada puede responder su solicitud (ver respondeSuInvitacion).
+      allow update: if (esMiembro()
+                        && request.resource.data.propietario == resource.data.propietario
+                        && resource.data.propietario in request.resource.data.miembros
+                        && request.resource.data.miembros.toSet().difference(resource.data.miembros.toSet()).size() == 0)
+                    || (esInvitado() && respondeSuInvitacion());
 
       // ELIMINAR: solo el propietario. Los demás pueden salirse (eso es un update),
       // pero no borrarle la entrega a otro.

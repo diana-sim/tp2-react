@@ -2,6 +2,23 @@
 
 Registro de los cambios de cada versión publicada de **Al día**.
 
+## v3.1 — Solicitudes, responsables e ícono de compartida
+
+- **Compartir con solicitud:** invitar a alguien ya no lo suma directo. Le llega una
+  solicitud ("Sofi te invitó a TP2") arriba de todo, en cualquier sección, y elige
+  **Aceptar** o **Rechazar**. Hasta que acepta, la entrega no aparece en sus listas.
+- **Invitar al crear:** en *Nueva entrega* se pueden sumar emails para invitar desde el principio.
+  Antes de crear se verifica que tengan cuenta; si alguno no existe, se avisa y no se crea nada.
+- **Invitaciones pendientes:** en "Compartida con" se ven las solicitudes enviadas
+  ("esperando respuesta") y se pueden cancelar.
+- **Responsable por parte, más visible:** cada parte muestra el circulito con las iniciales de
+  quien se encarga, y al crear una parte nueva ya se puede elegir el responsable.
+- **Ícono de compartida:** las entregas con más de una persona llevan un ícono de personitas
+  al lado del título (lista, tablero, calendario, Hoy y detalle).
+- **Reglas de Firestore:** la persona invitada puede leer la entrega y responder su solicitud,
+  y nadie puede sumar miembros a mano: solo se entra aceptando.
+- **Modo prueba:** "Ejemplos" trae 2 solicitudes ficticias para probar el flujo.
+
 ## v3 — Entregas compartidas
 
 Hasta acá la app era personal: cada quien veía solo sus entregas. Ahora una entrega

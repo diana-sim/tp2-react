@@ -12,9 +12,11 @@ const parte = (titulo, horas, estado, asignadoA = null) => ({ id: id(), titulo, 
 // Algunas están compartidas con otro usuario ficticio para poder ver cómo funciona.
 const YO = 'demo';
 const COMPANERA = 'demo-2';
+const OTRO = 'demo-3';
 const FICHAS = {
-  [YO]: { nombre: 'Vos', email: 'vos@ejemplo.com' },
+  [YO]: { nombre: 'Usuario demo', email: 'vos@ejemplo.com' },
   [COMPANERA]: { nombre: 'Sofi Rivas', email: 'sofi@ejemplo.com' },
+  [OTRO]: { nombre: 'Fede Ortiz', email: 'fede@ejemplo.com' },
 };
 export const DEMO_COMPANERA = COMPANERA;
 
@@ -76,4 +78,20 @@ export const crearDemo = () => [
   entregaDePrueba({ titulo: 'Carpeta de preproducción', materia: 'Animación', fechaEntrega: fecha(-9), estado: 'terminada', horasEstimadas: 14, horasReales: 19 }),
   entregaDePrueba({ titulo: 'Parcial de teoría', materia: 'Tecno IV', fechaEntrega: fecha(-30), estado: 'terminada', horasEstimadas: 10, horasReales: 9 }),
   entregaDePrueba({ titulo: 'Ensayo de historia', materia: 'Historia del Diseño', fechaEntrega: fecha(-4), estado: 'terminada', horasEstimadas: 4 }),
+];
+
+// Solicitudes ficticias (v3.1): entregas de otras personas que te invitaron.
+// No aparecen en tus listas hasta que las aceptás desde el aviso de arriba.
+export const crearInvitacionesDemo = () => [
+  entregaDePrueba({
+    titulo: 'Maqueta final de Taller', materia: 'Taller de Diseño', fechaEntrega: fecha(12),
+    propietario: COMPANERA, miembros: [COMPANERA],
+    invitados: [YO], invitadosInfo: { [YO]: { ...FICHAS[YO], invitadoPor: 'Sofi Rivas' } },
+    subtareas: [parte('Planos', 4, 'hecha', COMPANERA), parte('Corte láser', 3, 'pendiente'), parte('Armado', 5, 'pendiente')],
+  }),
+  entregaDePrueba({
+    titulo: 'Exposición oral de Sociología', materia: 'Sociología', fechaEntrega: fecha(8),
+    propietario: OTRO, miembros: [OTRO, COMPANERA],
+    invitados: [YO], invitadosInfo: { [YO]: { ...FICHAS[YO], invitadoPor: 'Fede Ortiz' } },
+  }),
 ];
