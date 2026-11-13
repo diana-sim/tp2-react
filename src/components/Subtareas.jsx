@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ESTADOS_SUB } from '../data/estados.js';
-import { nombreVisible } from '../lib/personas.js';
+import { nombreVisible, iniciales, colorDe } from '../lib/personas.js';
 
 // Mini tablero de subtareas (partes de la entrega) dentro del detalle. Es opcional.
 // Recibe la lista y una función onCambiar(nuevaLista) que guarda en Firestore.
@@ -9,6 +9,7 @@ import { nombreVisible } from '../lib/personas.js';
 export default function Subtareas({ subtareas, onCambiar, miembros = [], miembrosInfo = {}, uid }) {
   const [titulo, setTitulo] = useState('');
   const [horas, setHoras] = useState('');
+  const [responsable, setResponsable] = useState(''); // al crear una parte ya se puede asignar
   const [error, setError] = useState('');
   const [arrastrando, setArrastrando] = useState(null);
   const [encima, setEncima] = useState(null);
@@ -23,9 +24,9 @@ export default function Subtareas({ subtareas, onCambiar, miembros = [], miembro
     const h = horas === '' ? 0 : parseFloat(horas); // las horas son opcionales
     if (isNaN(h) || h < 0) return setError('Las horas tienen que ser un número positivo.');
     setError('');
-    const nueva = { id: crypto.randomUUID(), titulo: titulo.trim(), horas: h, estado: 'pendiente', asignadoA: null };
+    const nueva = { id: crypto.randomUUID(), titulo: titulo.trim(), horas: h, estado: 'pendiente', asignadoA: responsable || null };
     const salioBien = await onCambiar([...subtareas, nueva]);
-    if (salioBien) { setTitulo(''); setHoras(''); }
+    if (salioBien) { setTitulo(''); setHoras(''); setResponsable(''); }
   };
 
   // MOVER: cambia el estado de una subtarea
@@ -91,7 +92,16 @@ export default function Subtareas({ subtareas, onCambiar, miembros = [], miembro
                   <div className={'mini-t' + (col.clave === 'hecha' ? ' ok' : '')}>{s.titulo}</div>
 
                   {compartida && (
+                    // Responsable: circulito con sus iniciales + selector para cambiarlo.
                     // El clic no tiene que avanzar el estado de la parte, por eso lo frenamos acá.
+                    <div className="mini-resp">
+                    {s.asignadoA && miembros.includes(s.asignadoA) ? (
+                      <span className="avatar avatar-xs" style={{ background: colorDe(s.asignadoA) }} aria-hidden="true">
+                        {iniciales(miembrosInfo[s.asignadoA])}
+                      </span>
+                    ) : (
+                      <span className="avatar avatar-xs avatar-vacio" aria-hidden="true">?</span>
+                    )}
                     <select className={'mini-asig' + (s.asignadoA ? ' asignada' : '')}
                             value={s.asignadoA || ''}
                             aria-label={`Responsable de ${s.titulo}`}
@@ -104,6 +114,7 @@ export default function Subtareas({ subtareas, onCambiar, miembros = [], miembro
                         </option>
                       ))}
                     </select>
+                    </div>
                   )}
 
                   <div className="mini-p">
@@ -123,6 +134,15 @@ export default function Subtareas({ subtareas, onCambiar, miembros = [], miembro
                value={titulo} onChange={e => { setTitulo(e.target.value); setError(''); }} />
         <input className="campo campo-hs-opc" type="number" min="0" step="0.5" placeholder="hs (opc.)" aria-label="Horas estimadas (opcional)"
                value={horas} onChange={e => { setHoras(e.target.value); setError(''); }} />
+        {compartida && (
+          <select className="campo campo-resp" value={responsable} aria-label="Quién se encarga"
+                  onChange={e => setResponsable(e.target.value)}>
+            <option value="">¿Quién se encarga?</option>
+            {miembros.map(m => (
+              <option key={m} value={m}>{nombreVisible(miembrosInfo[m])}{m === uid ? ' (vos)' : ''}</option>
+            ))}
+          </select>
+        )}
         <button className="btn btn-sm" type="submit">+ Agregar</button>
       </form>
     </div>

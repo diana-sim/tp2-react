@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { situacion } from '../lib/calculos.js';
 import { claveFecha, fmtFecha } from '../lib/formato.js';
+import MarcaCompartida from './MarcaCompartida.jsx';
 
 const DIAS = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
 
@@ -9,7 +10,7 @@ function Chip({ t, ritmo, hpd, onAbrir }) {
   const sit = situacion(t, ritmo.factor, hpd);
   return (
     <button className={'chip chip-' + sit.color} onClick={() => onAbrir(t.id)} title={`${t.titulo} · ${sit.etiqueta}`}>
-      {t.titulo}
+      <MarcaCompartida tarea={t} tamano={12} />{t.titulo}
     </button>
   );
 }

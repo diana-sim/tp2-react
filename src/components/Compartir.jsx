@@ -3,14 +3,16 @@ import { buscarPorEmail } from '../services/usuarios.js';
 import { iniciales, nombreVisible } from '../lib/personas.js';
 
 // Bloque "Compartida con" dentro del detalle de una entrega.
-// Permite sumar personas por email y sacarlas.
-// Recibe la tarea, el uid de quien está mirando, y dos funciones que guardan en Firestore.
-export default function Compartir({ tarea, uid, onSumar, onQuitar }) {
+// Desde la v3.1 no se suma a nadie directo: se le envía una SOLICITUD,
+// y recién cuando la acepta pasa a ser miembro.
+// Recibe la tarea, el uid de quien está mirando, y funciones que guardan en Firestore.
+export default function Compartir({ tarea, uid, onInvitar, onCancelarInvitacion, onQuitar }) {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [buscando, setBuscando] = useState(false);
 
   const miembros = tarea.miembros || [];
+  const invitados = tarea.invitados || [];
   const esPropietario = tarea.propietario === uid;
 
   const invitar = async e => {
@@ -33,7 +35,11 @@ export default function Compartir({ tarea, uid, onSumar, onQuitar }) {
         setError('Esa persona ya está en la entrega.');
         return;
       }
-      if (await onSumar(persona)) setEmail('');
+      if (invitados.includes(persona.uid)) {
+        setError('Ya le mandaste una solicitud. Falta que la acepte.');
+        return;
+      }
+      if (await onInvitar(persona)) setEmail('');
     } catch {
       setError('No se pudo compartir. Revisá tu conexión y probá de nuevo.');
     } finally {
@@ -50,7 +56,7 @@ export default function Compartir({ tarea, uid, onSumar, onQuitar }) {
 
       {miembros.length === 1 && (
         <p className="aviso aviso-arriba">
-          Por ahora es solo tuya. Sumá a quien curse con vos y los dos van a ver los mismos cambios.
+          Por ahora es solo tuya. Invitá a quien curse con vos: le llega una solicitud y, si acepta, los dos ven los mismos cambios.
         </p>
       )}
 
@@ -82,6 +88,21 @@ export default function Compartir({ tarea, uid, onSumar, onQuitar }) {
             </li>
           );
         })}
+        {/* Solicitudes enviadas que todavía no respondieron */}
+        {invitados.map(i => {
+          const info = tarea.invitadosInfo?.[i] || {};
+          return (
+            <li className="miembro miembro-pendiente" key={i}>
+              <span className="avatar avatar-sm avatar-pendiente" aria-hidden="true">{iniciales(info)}</span>
+              <span className="miembro-txt">
+                <span className="miembro-n">{nombreVisible(info)}</span>
+                <span className="miembro-e">Solicitud enviada · esperando respuesta</span>
+              </span>
+              <button className="x" aria-label={`Cancelar la solicitud a ${nombreVisible(info)}`}
+                      onClick={() => window.confirm(`¿Cancelar la solicitud a ${nombreVisible(info)}?`) && onCancelarInvitacion(i)}>×</button>
+            </li>
+          );
+        })}
       </ul>
 
       {error && <p className="error error-sub">{error}</p>}
@@ -90,10 +111,10 @@ export default function Compartir({ tarea, uid, onSumar, onQuitar }) {
         <input className="campo crece" type="email" placeholder="email@de.tu.companero" aria-label="Email de la persona"
                value={email} onChange={e => { setEmail(e.target.value); setError(''); }} />
         <button className="btn btn-sm" type="submit" disabled={buscando}>
-          {buscando ? 'Buscando…' : '+ Sumar'}
+          {buscando ? 'Buscando…' : 'Invitar'}
         </button>
       </form>
-      <p className="aviso">La persona tiene que tener cuenta en la app para poder sumarla.</p>
+      <p className="aviso">La persona tiene que tener cuenta en la app. Va a ver tu solicitud y decide si se suma.</p>
     </div>
   );
 }

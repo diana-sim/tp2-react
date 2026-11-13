@@ -2,6 +2,7 @@ import { ESTADOS } from '../data/estados.js';
 import { ordenarPorUrgencia, situacion, describirRitmo, proximosDias, horasEstimadas } from '../lib/calculos.js';
 import { saludo, fechaDeHoy, claveFecha } from '../lib/formato.js';
 import FilaTarea from '../components/FilaTarea.jsx';
+import MarcaCompartida from '../components/MarcaCompartida.jsx';
 import Mascota from '../components/Mascota.jsx';
 
 // Sección "Hoy": un resumen para arrancar el día sin tener que mirar todo.
@@ -97,6 +98,7 @@ export default function VistaHoy({ tareas, ritmo, hpd, nombre, onAbrir, onNueva,
                 <div className="agenda-l">
                   {lista.map(t => (
                     <button key={t.id} className={'chip chip-' + situacion(t, ritmo.factor, hpd).color} onClick={() => onAbrir(t.id)}>
+                      <MarcaCompartida tarea={t} tamano={12} />
                       {t.titulo} <span className="chip-m">· {t.materia}</span>
                     </button>
                   ))}

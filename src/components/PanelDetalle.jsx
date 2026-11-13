@@ -10,6 +10,7 @@ import Subtareas from './Subtareas.jsx';
 import Compartir from './Compartir.jsx';
 import { iniciales, nombreVisible } from '../lib/personas.js';
 import EtiquetaSituacion from './EtiquetaSituacion.jsx';
+import MarcaCompartida from './MarcaCompartida.jsx';
 import Mascota from './Mascota.jsx';
 
 const COLOR_ANILLO = { rojo: '#F2A8C4', ambar: '#F0B47E', oliva: '#A8C86E', gris: '#A8C86E', celeste: '#86C3D8' };
@@ -18,7 +19,8 @@ const COLOR_ANILLO = { rojo: '#F2A8C4', ambar: '#F0B47E', oliva: '#A8C86E', gris
 // Se abre encima de la sección actual, así al cerrarlo seguís donde estabas.
 // onActualizar(cambios, mensaje) guarda en Firestore solo los campos que cambian.
 export default function PanelDetalle({
-  tarea, ritmo, hpd, materias, uid, onActualizar, onEliminar, onCerrar, onSumarMiembro, onQuitarMiembro,
+  tarea, ritmo, hpd, materias, uid, onActualizar, onEliminar, onCerrar,
+  onInvitar, onCancelarInvitacion, onQuitarMiembro,
 }) {
   const sit = situacion(tarea, ritmo.factor, hpd);
   const terminada = tarea.estado === 'terminada';
@@ -91,7 +93,8 @@ export default function PanelDetalle({
           <Subtareas subtareas={tarea.subtareas} onCambiar={subtareas => onActualizar({ subtareas })}
                      miembros={tarea.miembros} miembrosInfo={tarea.miembrosInfo} uid={uid} />
 
-          <Compartir tarea={tarea} uid={uid} onSumar={onSumarMiembro} onQuitar={onQuitarMiembro} />
+          <Compartir tarea={tarea} uid={uid} onInvitar={onInvitar}
+                     onCancelarInvitacion={onCancelarInvitacion} onQuitar={onQuitarMiembro} />
 
                     <Notas tarea={tarea} onActualizar={onActualizar} />
           <Links tarea={tarea} onActualizar={onActualizar} />
@@ -152,7 +155,7 @@ function Encabezado({ tarea, materias, onActualizar }) {
   if (!editando) {
     return (
       <div className="panel-tit">
-        <h1>{tarea.titulo}</h1>
+        <h1><MarcaCompartida tarea={tarea} tamano={18} />{tarea.titulo}</h1>
         <p className="sub">
           Entrega {fmtFecha(tarea.fechaEntrega)}
           {tarea.fechaEntrega && tarea.estado !== 'terminada' && ` · ${textoDias(diasRestantes(tarea))}`}

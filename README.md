@@ -16,8 +16,9 @@ las desarmás en partes y las mirás de la forma que te resulte más cómoda.
 - **Mi ritmo** (extra): si cargás cuánto tiempo creés que te lleva cada entrega y cuánto te llevó,
   la app aprende cómo estimás ("subestimás tus tareas en un 30%") y te avisa si no llegás.
 
-- **Entregas compartidas:** una entrega puede tener varias personas. Se suma a alguien por su
-  email, los dos ven los mismos cambios y cada parte puede tener un responsable.
+- **Entregas compartidas:** una entrega puede tener varias personas. Se invita a alguien por su
+  email, esa persona recibe una **solicitud** y decide si se suma. Una vez adentro, todos ven los
+  mismos cambios y cada parte puede tener un responsable. Las compartidas llevan un ícono de personitas.
 
 Cada persona entra con su email y contraseña. Sus datos se guardan en Cloud Firestore
 y la acompañan en cualquier compu o celular.
@@ -54,7 +55,8 @@ y la acompañan en cualquier compu o celular.
   (`getDocs`, `getDoc`, `addDoc`, `updateDoc`, `setDoc`, `deleteDoc`,
   `arrayUnion`, `arrayRemove`, `writeBatch`)
 - `src/services/usuarios.js`: directorio de personas, para poder invitar por email
-- `src/components/Compartir.jsx`: sumar y quitar personas de una entrega
+- `src/components/Compartir.jsx`: invitar personas (solicitud), cancelar invitaciones y quitar miembros
+- `src/components/Solicitudes.jsx`: aviso para aceptar o rechazar solicitudes recibidas
 - `src/lib/personas.js`: cómo se muestra cada persona (nombre, iniciales)
 - `src/App.jsx`: estado principal y navegación entre secciones
 - `src/views/`: las secciones (Hoy, Mis entregas, Mi ritmo)
@@ -97,6 +99,15 @@ cambió a "entra quien esté en la lista". Las entregas creadas antes se copian 
 formato nuevo la primera vez que la persona entra (`migrarTareasViejas` en
 `src/services/tareas.js`); las originales quedan como respaldo y la marca `migradoV3`
 evita que se dupliquen.
+
+### Solicitudes para sumarse (v3.1)
+
+Invitar ya no suma a la persona directamente. La entrega guarda dos listas:
+`miembros` (los que ya están) e `invitados` (los que tienen una solicitud pendiente).
+Quien está en `invitados` puede leer la entrega para ver de qué se trata, pero no le aparece
+en sus listas hasta que acepta. Al aceptar, en una sola escritura sale de `invitados` y entra
+a `miembros`. Las reglas de Firestore lo hacen cumplir: un miembro no puede agregar miembros
+a mano, y la persona invitada solo puede sumarse o sacarse a sí misma.
 
 ### Una aclaración sobre el directorio de usuarios
 
