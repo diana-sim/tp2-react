@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  escucharSesion, leerTareas, crearTarea, actualizarTarea, borrarTarea, leerPreferencias, guardarPreferencias,
+  leerTareas, crearTarea, actualizarTarea, borrarTarea, leerPreferencias, guardarPreferencias,
 } from './services/tareas.js';
+import { escucharSesion, salir } from './services/auth.js';
+import Login from './components/Login.jsx';
 import { calcularRitmo, HORAS_POR_DIA_DEFECTO } from './lib/calculos.js';
 import Sidebar from './components/Sidebar.jsx';
 import FormNueva from './components/FormNueva.jsx';
@@ -21,7 +23,8 @@ export default function App() {
   // ---------- datos ----------
   const [tareas, setTareas] = useState([]);
   const [prefs, setPrefs] = useState(null); // { vistaPreferida, horasPorDia }
-  const [uid, setUid] = useState(null);
+  const [usuario, setUsuario] = useState(null); // la persona conectada (null = nadie)
+  const uid = usuario?.uid;                      // su id: es el nombre de su carpeta en Firestore
 
   // ---------- interfaz ----------
   const [cargando, setCargando] = useState(true);
@@ -32,6 +35,7 @@ export default function App() {
   const [abierta, setAbierta] = useState(null);           // id de la entrega abierta en el panel
   const [creando, setCreando] = useState(false);
   const [bienvenida, setBienvenida] = useState(false);    // primera vez: presentar la app
+  const [colapsado, setColapsado] = useState(false);      // menú lateral angosto (solo íconos)
 
   // ---------- modo dev: datos de prueba en memoria (NO se guardan en Firestore) ----------
   const [modo, setModo] = useState('real');               // 'real' | 'vacio' | 'demo'
@@ -40,16 +44,24 @@ export default function App() {
   const lista = enPrueba ? tareasDemo : tareas;            // las entregas que se muestran
   const setLista = enPrueba ? setTareasDemo : setTareas;   // y cómo se modifican
 
-  // ---------- al abrir: sesión anónima + lectura ----------
+  // ---------- sesión: Firebase avisa cuando alguien entra o sale ----------
   useEffect(() => {
-    const dejarDeEscuchar = escucharSesion(
-      async id => {
-        setUid(id);
+    const dejarDeEscuchar = escucharSesion(async u => {
+        setUsuario(u);
+        if (!u) {
+          // Nadie conectado (o acaba de salir): vaciamos todo y se muestra el Login.
+          setTareas([]); setPrefs(null); setAbierta(null); setModo('real');
+          setCargando(false);
+          return;
+        }
+        setCargando(true);
+        const id = u.uid;
         try {
           // Promise.all: pide las dos cosas a la vez y espera a que lleguen ambas.
           const [lista, preferencias] = await Promise.all([leerTareas(id), leerPreferencias(id)]);
           setTareas(lista);
           setPrefs(preferencias);
+          setColapsado(!!preferencias?.menuColapsado);
           if (preferencias?.vistaPreferida) setVista(preferencias.vistaPreferida);
           else setBienvenida(true); // nunca eligió vista: es la primera vez
         } catch {
@@ -57,12 +69,7 @@ export default function App() {
         } finally {
           setCargando(false);
         }
-      },
-      () => {
-        setError('No se pudo iniciar sesión. Revisá tu conexión y recargá.');
-        setCargando(false);
-      }
-    );
+    });
     return dejarDeEscuchar;
   }, []);
 
@@ -74,6 +81,7 @@ export default function App() {
 
   // ---------- valores derivados ----------
   const hpd = prefs?.horasPorDia || HORAS_POR_DIA_DEFECTO;   // horas de estudio por día
+  const nombre = prefs?.nombre || '';                        // para saludar: "Buenas noches, Diana"
   const ritmo = useMemo(() => calcularRitmo(lista), [lista]);
   const tareaAbierta = lista.find(t => t.id === abierta);
   const activas = lista.filter(t => t.estado !== 'terminada').length;
@@ -139,14 +147,20 @@ export default function App() {
   };
 
   // La vista cambia al instante; en segundo plano se recuerda como favorita.
+  // Colapsar/expandir el menú: cambia al instante y se recuerda en segundo plano.
+  const alternarMenu = () => {
+    setColapsado(!colapsado);
+    guardarPreferencia({ menuColapsado: !colapsado });
+  };
+
   const cambiarVista = v => {
     setVista(v);
     guardarPreferencia({ vistaPreferida: v });
   };
 
-  // Primera vez: eligió su vista favorita en la bienvenida.
-  const empezar = async v => {
-    const salioBien = await guardarPreferencia({ vistaPreferida: v });
+  // Primera vez: en la bienvenida contó su nombre y eligió su vista favorita.
+  const empezar = async (v, nombre) => {
+    const salioBien = await guardarPreferencia({ vistaPreferida: v, nombre });
     if (salioBien) { setVista(v); setBienvenida(false); setSeccion('entregas'); }
     return salioBien;
   };
@@ -160,15 +174,25 @@ export default function App() {
   };
   const verEntregas = v => { if (v) cambiarVista(v); irA('entregas'); };
 
-  if (cargando) return <p className="cargando">Cargando tus entregas…</p>;
+  if (cargando) return <p className="cargando">Cargando…</p>;
+  if (!usuario) return <Login />; // sin sesión: solo se ve el login
+
+  const cerrarSesion = async () => {
+    try { await salir(); } catch { setError('No se pudo cerrar la sesión. Probá de nuevo.'); }
+  };
 
   // Lo que comparten las tres secciones
   const comunes = { tareas: lista, ritmo, hpd, onAbrir: setAbierta, onNueva: () => setCreando(true) };
 
   return (
-    <div className="app">
+    <div className={'app' + (colapsado ? ' colapsado' : '')}>
       <Sidebar seccion={seccion} activas={activas} onIrA={irA} onNueva={() => setCreando(true)}
-               modo={MOSTRAR_DEV ? modo : null} onCambiarModo={cambiarModo} />
+               colapsado={colapsado} onAlternar={alternarMenu}
+               perfil={{
+                 nombre, email: usuario.email, onSalir: cerrarSesion,
+                 onCambiarNombre: n => guardarPreferencia({ nombre: n }),
+                 modo: MOSTRAR_DEV ? modo : null, onCambiarModo: cambiarModo,
+               }} />
 
       <main className="main">
         {enPrueba && (
@@ -179,7 +203,7 @@ export default function App() {
         )}
         {error && <p className="error error-pag">{error}</p>}
 
-        {seccion === 'hoy' && <VistaHoy {...comunes} onVerEntregas={verEntregas} onVerRitmo={() => irA('ritmo')} />}
+        {seccion === 'hoy' && <VistaHoy {...comunes} nombre={nombre} onVerEntregas={verEntregas} onVerRitmo={() => irA('ritmo')} />}
         {seccion === 'entregas' && <VistaEntregas {...comunes} vista={vista} onCambiarVista={cambiarVista} onMover={mover} />}
         {seccion === 'ritmo' && <VistaRitmo {...comunes} onCambiarHoras={h => guardarPreferencia({ horasPorDia: h })} />}
       </main>

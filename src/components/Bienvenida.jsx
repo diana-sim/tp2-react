@@ -12,11 +12,12 @@ const VISTAS = [
 // Primera vez que se abre la app: presenta la idea y deja elegir la vista favorita.
 export default function Bienvenida({ onElegir }) {
   const [vista, setVista] = useState('lista');
+  const [nombre, setNombre] = useState('');
   const [guardando, setGuardando] = useState(false);
 
   const confirmar = async () => {
     setGuardando(true);
-    const salioBien = await onElegir(vista);
+    const salioBien = await onElegir(vista, nombre.trim());
     if (!salioBien) setGuardando(false);
   };
 
@@ -26,6 +27,10 @@ export default function Bienvenida({ onElegir }) {
         <Mascota pose="saludando" tamano={84} />
         <p className="bienv-lead">¡Hola! Soy Posti. <b>Al día</b> es una forma nueva de organizar la facu: tus entregas, sus partes y sus fechas, vistas como a vos te sirva.</p>
       </div>
+
+      <label className="lbl-c" htmlFor="b-nombre">¿Cómo te llamás?</label>
+      <input id="b-nombre" className="campo" placeholder="Tu nombre" autoFocus
+             value={nombre} onChange={e => setNombre(e.target.value)} />
 
       <label className="lbl-c">¿Cómo te gusta ver tus cosas?</label>
       <div className="vistas-op">

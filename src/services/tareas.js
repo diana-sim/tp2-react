@@ -1,8 +1,8 @@
-// TODO lo que habla con Firebase está en este archivo.
+// Todo lo que lee o escribe datos en Firestore está en este archivo.
+// (El login está aparte, en services/auth.js.)
 // Los componentes no importan nada de Firebase: llaman a estas funciones.
-import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, setDoc, updateDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase.js';
+import { db } from '../firebase.js';
 
 // Cada usuario tiene su propia carpeta:
 //   usuarios/{uid}/tareas/{id}             → las entregas
@@ -15,14 +15,6 @@ const preferencias = uid => doc(db, 'usuarios', uid, 'config', 'preferencias');
 const completar = t => ({
   fechaEntrega: '', horasEstimadas: 0, subtareas: [], notas: '', links: [], horasReales: 0, ...t,
 });
-
-// SESIÓN: avisa cuando hay un usuario. Si no hay, inicia una sesión anónima.
-export function escucharSesion(alEntrar, alFallar) {
-  return onAuthStateChanged(auth, usuario => {
-    if (usuario) alEntrar(usuario.uid);
-    else signInAnonymously(auth).catch(alFallar);
-  });
-}
 
 // ---------- entregas ----------
 export async function leerTareas(uid) {

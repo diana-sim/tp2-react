@@ -16,12 +16,13 @@ las desarmás en partes y las mirás de la forma que te resulte más cómoda.
 - **Mi ritmo** (extra): si cargás cuánto tiempo creés que te lleva cada entrega y cuánto te llevó,
   la app aprende cómo estimás ("subestimás tus tareas en un 30%") y te avisa si no llegás.
 
-Los datos se guardan en Cloud Firestore, con un usuario anónimo por navegador.
+Cada persona entra con su email y contraseña. Sus datos se guardan en Cloud Firestore
+y la acompañan en cualquier compu o celular.
 
 ## Tecnologías
 
 - React + Vite
-- Firebase (Authentication anónima + Cloud Firestore)
+- Firebase (Authentication con email + Cloud Firestore)
 - Vercel (publicación)
 
 ## Cómo ejecutarlo
@@ -33,7 +34,7 @@ Los datos se guardan en Cloud Firestore, con un usuario anónimo por navegador.
 2. Copiar `.env.example` como `.env` y completar con los datos de la app web de Firebase
    (Configuración del proyecto → General → Tus apps).
 3. En la consola de Firebase:
-   - Authentication → Método de acceso → activar **Anónimo**.
+   - Authentication → Método de acceso → activar **Correo electrónico/contraseña**.
    - Crear Cloud Firestore (edición Standard, región southamerica-east1).
    - Publicar las reglas del archivo `firestore.rules`.
 4. Levantar el proyecto:
@@ -44,8 +45,10 @@ Los datos se guardan en Cloud Firestore, con un usuario anónimo por navegador.
 ## Dónde está cada cosa
 
 - `src/firebase.js`: conexión con Firebase (lee las variables del `.env`)
-- `src/services/tareas.js`: **todas** las operaciones con Firebase
-  (sesión anónima, `getDocs`, `getDoc`, `addDoc`, `updateDoc`, `setDoc`, `deleteDoc`)
+- `src/services/auth.js`: login, signup y logout
+  (`signInWithEmailAndPassword`, `createUserWithEmailAndPassword`, `signOut`)
+- `src/services/tareas.js`: **todas** las operaciones con Firestore
+  (`getDocs`, `getDoc`, `addDoc`, `updateDoc`, `setDoc`, `deleteDoc`)
 - `src/App.jsx`: estado principal y navegación entre secciones
 - `src/views/`: las secciones (Hoy, Mis entregas, Mi ritmo)
 - `src/components/`: piezas reutilizables (panel de detalle, tablero, calendario, formularios…)
